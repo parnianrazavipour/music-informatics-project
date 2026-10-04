@@ -3,7 +3,7 @@ import os
 import librosa
 from scipy.interpolate import interp1d
 
-def _cyclic_tempogram_features(base_tempogram, tempo_axis, M, tau_0, max_temp, min_temp):
+def _cyclic_tempogram_features(base_tempogram, tempo_axis, M, tau_0, max_temp, min_temp, shift=False):
     """
     Parameters: 
     base_tempogram: 2D array of shape (N_tempo_bins, N_frames) (Fourier tempogram).
@@ -12,6 +12,7 @@ def _cyclic_tempogram_features(base_tempogram, tempo_axis, M, tau_0, max_temp, m
     tau_0: Reference tempo (e.g., 60 BPM)
     max_temp: Maximum tempo (e.g., 480 (60 * 2^3) BPM)
     min_temp: Minimum tempo (e.g., 30 BPM)
+    shift: Whether to shift the cyclic tempogram so that the dominant pulse is always in bin 0 (default: False)
     """
     # Converts the tempo axis to a logarithmic scale (base 2) and computes the number of octaves
     octave_min = int(np.floor(np.log2(min_temp / tau_0)))
@@ -35,36 +36,60 @@ def _cyclic_tempogram_features(base_tempogram, tempo_axis, M, tau_0, max_temp, m
     T_log_reshaped = T_log.reshape((num_octaves, M, -1))
     cyclic_tempogram = np.sum(T_log_reshaped, axis=0)  # Form: (M, N_frames)
 
-    # Computes the mean across frames and normalizes the cyclic tempogram (Muller 6.32)
+    # We rotate circularly so that dominant pulse is always in bin 0 if shift=True (so that the feature vector is invariant to tempo transposition)
+    # We don't want the classifier to learn that e.g. it's a waltz just because the dominant bin is 5 (which corresponds to 90 BPM) instead of 0 (which corresponds to 60 BPM)
     cyclic_mean = np.mean(cyclic_tempogram, axis=1)
-    norm = np.linalg.norm(cyclic_mean)
+    if shift and np.max(cyclic_mean) > 0:
+        dominant_bin = int(np.argmax(cyclic_mean))
+        cyclic_mean = np.roll(cyclic_mean, -dominant_bin)
+
+
+    norm = np.linalg.norm(cyclic_mean) # Computes the mean across frames and normalizes the cyclic tempogram (Muller 6.32)
     if norm > 0:
         cyclic_mean = cyclic_mean / norm
 
     return cyclic_mean  # M dimensions
 
-def _autocorr_subharmonic_features(tempogram_autocorr, tempo_axis_autocorr, tempo_min, tempo_max):
+def _estimate_t_hat(tempogram, tempo_axis, tempo_min, tempo_max):
+    """
+    Calculates the global tempo tau_hat via time averaging and argmax (Muller 6.32-6.33)
+    """
+    t_avg = np.mean(tempogram, axis=1)
+    valid_mask = (tempo_axis >= tempo_min) & (tempo_axis <= tempo_max) & np.isfinite(t_avg)
+
+    if not np.any(valid_mask):
+        return 120.0
+
+    valid_tempi = tempo_axis[valid_mask]
+    valid_energy = t_avg[valid_mask]
+    tau_hat = valid_tempi[np.argmax(valid_energy)]
+    return float(tau_hat)
+
+def _autocorr_subharmonic_features(tempogram_autocorr, tempo_axis_autocorr, tau_hat, win_length, correction=False):
     """
     Extracts subharmonic energy ratios from an autocorrelation tempogram
     to capture meter and measure-level structure (Muller 6.2.3).
+
     """
     # Average across time to obtain an overall summary curve (Muller 6.32)
     t_a_avg = np.mean(tempogram_autocorr, axis=1)
 
-    # Estimate primary tempo (tactus) within plausible range [tempo_min, tempo_max] BPM
-    valid_mask = (tempo_axis_autocorr >= tempo_min) & (tempo_axis_autocorr <= tempo_max)
-    if not np.any(valid_mask):
-        return np.zeros(3)
-
-    valid_tempi = tempo_axis_autocorr[valid_mask]
-    valid_energy = t_a_avg[valid_mask]
-    tau_hat = valid_tempi[np.argmax(valid_energy)] # Muller 6.33 
+    # Window correction
+    if correction:
+        n_lags = len(t_a_avg)
+        lags = np.arange(n_lags)
+        window_correction = np.maximum(1.0 - (lags / float(win_length)), 0.05)
+        t_a_avg = t_a_avg / window_correction
 
     # Sort tempo axis to ensure monotonicity required by interp1d (this is needed because we may not have a value at say, tau_hat / 3 = 33.33 BPM if tau_hat = 100 BPM)
-    sort_idx = np.argsort(tempo_axis_autocorr)
+    finite_mask = np.isfinite(tempo_axis_autocorr) & (tempo_axis_autocorr > 0) & np.isfinite(t_a_avg)
+    tempi_clean = tempo_axis_autocorr[finite_mask]
+    energy_clean = t_a_avg[finite_mask]
+
+    sort_idx = np.argsort(tempi_clean)
     interp_autocorr = interp1d(
-        tempo_axis_autocorr[sort_idx],
-        t_a_avg[sort_idx],
+        tempi_clean[sort_idx],
+        energy_clean[sort_idx],
         kind='linear',
         bounds_error=False,
         fill_value=0.0
@@ -77,9 +102,9 @@ def _autocorr_subharmonic_features(tempogram_autocorr, tempo_axis_autocorr, temp
     r_2_4 = float(interp_autocorr(tau_hat / 2.0) / base_energy)
     r_4_4 = float(interp_autocorr(tau_hat / 4.0) / base_energy)
 
-    return np.array([r_2_4, r_3_4, r_4_4]), float(tau_hat)
+    return np.array([r_2_4, r_3_4, r_4_4])
 
-def _plp_features(novelty_curve, sr, hop_length, tempo_min, tempo_max):
+def _plp_features(novelty_curve, sr, hop_length, tempo_min, tempo_max, plp_win_length):
     """
     Extracts statistical descriptors from the Predominant Local Pulse (PLP) function Gamma
     """
@@ -89,6 +114,7 @@ def _plp_features(novelty_curve, sr, hop_length, tempo_min, tempo_max):
         onset_envelope=novelty_curve,
         sr=sr,
         hop_length=hop_length,
+        win_length=plp_win_length,
         tempo_min=tempo_min,
         tempo_max=tempo_max
     )
@@ -101,24 +127,45 @@ def _plp_features(novelty_curve, sr, hop_length, tempo_min, tempo_max):
 
     return np.array([plp_confidence, plp_peak_ratio])
 
-def extract_full_rhythm_vector(y, sr=22050, hop_length=512, win_length=384, M=15, cyclic_tau_0=60.0, cyclic_min_temp=30.0, cyclic_max_temp=480.0, pa_min_tempo=40.0, pa_max_tempo=240.0):
+def extract_full_rhythm_vector(
+        y, 
+        sr=22050,
+        hop_length=512, 
+        win_length=384, 
+        tau_hat_tempogram="fourier",  # or "autocorr"
+        M=15, 
+        cyclic_tau_0=60.0, 
+        cyclic_min_temp=30.0, 
+        cyclic_max_temp=480.0,
+        cyclic_shift=False, 
+        tactus_min_tempo=40.0, # This and tactus_max needs to be adjusted for different dance styles, and also tempogram for tau_hat
+        tactus_max_tempo=240.0,
+        autocorr_correction=False,
+
+    ):
     """
     Arguments:
     ---General Arguments---
     y: 1D array of audio samples
     sr: Sampling rate of the audio signal
     hop_length: Number of samples between successive frames
-    win_length: Window length for tempograms
+    win_length: Window length for tempograms (as well as PLP computation)
+    tau_hat_tempogram: Which tempogram to use for estimating tau_hat (either "fourier" or "autocorr"). Default is "fourier".
 
     ---Cyclic Tempogram Arguments---
     M: Number of bins per octave (or: the number of cyclic features / equivalence classes)
     cyclic_tau_0: Reference tempo (e.g., 60 BPM) (tau_0)
     cyclic_min_temp: Minimum tempo (e.g., 30 BPM. Should be a power of 2 fraction of tau_0, e.g., tau_0 / 2^k for some k)
     cyclic_max_temp: Maximum tempo (e.g., 480 BPM. Should be a power of 2 fraction of tau_0, e.g., tau_0 * 2^k for some k)
+    cyclic_shift: Whether to shift the cyclic tempogram so that the dominant pulse is always in bin 0 (default: False)
 
-    ---PLP Arguments / Autocorrelation Arguments---
-    pa_min_tempo: Minimum tempo for PLP and Autocorrelation (e.g., 40 BPM)
-    pa_max_tempo: Maximum tempo for PLP and Autocorrelation (e.g., 240 BPM)
+    ---PLP Arguments / tau_hat Arguments---
+    tactus_min_tempo: Minimum tempo for PLP and tau_hat (e.g., 40 BPM)
+    tactus_max_tempo: Maximum tempo for PLP and tau_hat (e.g., 240 BPM)
+    NB: These should be adjusted depending on the dance style (e.g., waltz, tango, foxtrot, etc.), the expected tempo range of the music and the expected tactus (tau_hat).
+
+    ---Autocorrelation Subharmonic Arguments---
+    autocorr_correction: Whether to apply window correction (default: False)
 
     returns:
     A 1D array of shape (M + 3 + 2,) containing the concatenated rhythm features:
@@ -139,7 +186,7 @@ def extract_full_rhythm_vector(y, sr=22050, hop_length=512, win_length=384, M=15
     T_A = librosa.feature.tempogram(onset_envelope=novelty, sr=sr, hop_length=hop_length, win_length=win_length)
     tempo_axis_autocorr = librosa.tempo_frequencies(n_bins=T_A.shape[0], sr=sr, hop_length=hop_length)
 
-    # Extract cyclic tempogram features (15 dimensions) using the Fourier tempogram
+    # Extract cyclic tempogram features (M dimensions) using the Fourier tempogram
     feats_cyclic = _cyclic_tempogram_features(
         base_tempogram=T_F,
         tempo_axis=tempo_axis_fourier,
@@ -147,14 +194,22 @@ def extract_full_rhythm_vector(y, sr=22050, hop_length=512, win_length=384, M=15
         tau_0=cyclic_tau_0,
         min_temp=cyclic_min_temp,
         max_temp=cyclic_max_temp,
+        shift=cyclic_shift,
     )
 
+    # Calculates tau_hat using fourier tempogram or autocorrelation tempogram
+    if tau_hat_tempogram == "fourier":
+        tau_hat = _estimate_t_hat(tempogram=T_F, tempo_axis=tempo_axis_fourier, tempo_min=tactus_min_tempo, tempo_max=tactus_max_tempo)
+    elif tau_hat_tempogram == "autocorr":
+        tau_hat = _estimate_t_hat(tempogram=T_A, tempo_axis=tempo_axis_autocorr, tempo_min=tactus_min_tempo, tempo_max=tactus_max_tempo)
+
     # Extract autocorrelation subharmonic features (3 dimensions) using the autocorrelation tempogram
-    feats_autocorr, tau_hat = _autocorr_subharmonic_features(
+    feats_autocorr = _autocorr_subharmonic_features(
         tempogram_autocorr=T_A,
         tempo_axis_autocorr=tempo_axis_autocorr,
-        tempo_max=pa_max_tempo,
-        tempo_min=pa_min_tempo,
+        win_length=win_length,
+        correction=autocorr_correction,   # Set to True if you want to apply window correction (Muller 6.2.3)
+        tau_hat=tau_hat,
     ) 
 
     # Extract PLP features (2 dimensions) using the novelty 
@@ -162,8 +217,9 @@ def extract_full_rhythm_vector(y, sr=22050, hop_length=512, win_length=384, M=15
         novelty_curve=novelty,
         sr=sr,
         hop_length=hop_length,
-        tempo_min=pa_min_tempo,
-        tempo_max=pa_max_tempo,
+        plp_win_length=win_length,
+        tempo_min=tactus_min_tempo,
+        tempo_max=tactus_max_tempo,
     )  
 
     return np.concatenate([feats_cyclic, feats_autocorr, feats_plp]), tau_hat
@@ -208,9 +264,8 @@ def print_rhythm_features(features, tau_hat, file_path=None):
     # 2. Subharmonic Ratios
     print(" 2. SUBHARMONIC RATIOS (3 dims, meter & metric structure)")
     print(f"    • Estimated tactus tempo (tau_hat): {tau_hat:.2f} BPM")
-    marker = "  ◄── Triple-meter dominant" if r_3_4 > 0.8 else ""
-    print(f"    • R_3/4 (Waltz / 3-beat):     {r_3_4:.3f}{marker}")
-    print(f"    • R_2/4 (Half-bar / 2-beat):   {r_2_4:.3f}")
+    print(f"    • R_2/4 (Half-bar / 2-beat):     {r_2_4:.3f}")
+    print(f"    • R_3/4 (Waltz / 3-beat):   {r_3_4:.3f}")
     print(f"    • R_4/4 (Full-bar / 4-beat):   {r_4_4:.3f}")
     print()
 
@@ -225,8 +280,9 @@ def print_rhythm_features(features, tau_hat, file_path=None):
     print("=" * 72)
 
 # Usage example:
-path = "BallroomData/Rumba-American/Albums-AnaBelen_Veneo-13.wav"
+path = "BallroomData/VienneseWaltz/Albums-Ballroom_Classics4-11.wav"
 y, sr = librosa.load(path, sr=22050)
-features, tau_hat = extract_full_rhythm_vector(y, M=30)
+y = librosa.effects.time_stretch(y, rate=1.1)
+features, tau_hat = extract_full_rhythm_vector(y, M=30, cyclic_shift=False, tau_hat_tempogram="fourier", autocorr_correction=False)
 
 print_rhythm_features(features, tau_hat, file_path=path)
