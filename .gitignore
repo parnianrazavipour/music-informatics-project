@@ -1,0 +1,9 @@
+# dataset (too big for git)
+BallroomData/
+data1.tar.gz
+
+# course lab notebooks, only used as reference
+DT2470_lab*.ipynb
+
+# macOS
+.DS_Store
