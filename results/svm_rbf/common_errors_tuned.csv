@@ -1,0 +1,11 @@
+true_genre,predicted_genre,clips,share_of_true_genre
+ChaChaCha,Samba,30,0.2702702702702703
+VienneseWaltz,Waltz,21,0.3230769230769231
+Samba,ChaChaCha,19,0.22093023255813954
+Waltz,VienneseWaltz,19,0.17272727272727273
+Jive,ChaChaCha,18,0.3
+Rumba,Waltz,16,0.16326530612244897
+Quickstep,ChaChaCha,15,0.18292682926829268
+ChaChaCha,Quickstep,15,0.13513513513513514
+VienneseWaltz,Tango,13,0.2
+Waltz,Rumba,13,0.11818181818181818
