@@ -10,3 +10,6 @@ DT2470_lab*.ipynb
 
 # python
 __pycache__/
+
+# features of all 13 versions, made by the extra experiment notebooks
+extra_experiments/all_versions_features*.csv
