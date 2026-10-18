@@ -238,6 +238,7 @@ def extract_full_rhythm_vector(
     ):
     """
     Arguments:
+    Default arguments are probably the best ones?
     ---General Arguments---
     y: 1D array of audio samples
     sr: Sampling rate of the audio signal
@@ -387,8 +388,10 @@ if __name__ == "__main__":
     path = "BallroomData/VienneseWaltz/Albums-Ballroom_Classics4-11.wav"
     y, sr = librosa.load(path, sr=22050)
     y = librosa.effects.time_stretch(y, rate=1.1)
-    features, tau_hat = extract_full_rhythm_vector(y, M=15, cyclic_shift=False, tau_hat_tempogram="combined", autocorr_correction=False)
+    features, tau_hat = extract_full_rhythm_vector(y, M=15, cyclic_shift=False, tau_hat_tempogram="combined")
 
     # Important: We should test with BOTH cyclic_shift=True and cyclic_shift=False and then compare. I.e. Rythmic features with cyclic_shift=False, and then, keeping all other parameters
     # the same cyclic_shift=True.
+
+    # The default parameters are probably the best ones.
     print_rhythm_features(features, tau_hat, file_path=path)
