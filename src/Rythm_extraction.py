@@ -389,4 +389,6 @@ if __name__ == "__main__":
     y = librosa.effects.time_stretch(y, rate=1.1)
     features, tau_hat = extract_full_rhythm_vector(y, M=15, cyclic_shift=False, tau_hat_tempogram="combined", autocorr_correction=False)
 
+    # Important: We should test with BOTH cyclic_shift=True and cyclic_shift=False and then compare. I.e. Rythmic features with cyclic_shift=False, and then, keeping all other parameters
+    # the same cyclic_shift=True.
     print_rhythm_features(features, tau_hat, file_path=path)
