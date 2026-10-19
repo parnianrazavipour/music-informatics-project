@@ -1,0 +1,51 @@
+fold,inner_best_macro_f1,class_weight,max_features,min_samples_leaf,model,feature_set,svm__C,svm__class_weight,svm__gamma
+1,0.7950035236472196,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
+2,0.8000080300782552,balanced,sqrt,2.0,Random Forest,Rhythm (as before),,,
+3,0.817276702936792,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
+4,0.8056570682005976,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
+5,0.7946838067727562,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
+1,0.6315513744122817,None,sqrt,8.0,Random Forest,Tempo only,,,
+2,0.6393473297839307,None,sqrt,8.0,Random Forest,Tempo only,,,
+3,0.6038018480969934,None,sqrt,8.0,Random Forest,Tempo only,,,
+4,0.6193855483545844,None,sqrt,2.0,Random Forest,Tempo only,,,
+5,0.6425630575232097,balanced,sqrt,8.0,Random Forest,Tempo only,,,
+1,0.6396317989379329,balanced,0.5,1.0,Random Forest,"Rhythm, tempo removed",,,
+2,0.6259402340002581,balanced,sqrt,1.0,Random Forest,"Rhythm, tempo removed",,,
+3,0.6337341686595898,balanced,0.5,1.0,Random Forest,"Rhythm, tempo removed",,,
+4,0.6364471711967502,balanced,sqrt,1.0,Random Forest,"Rhythm, tempo removed",,,
+5,0.6273479216018657,balanced,sqrt,2.0,Random Forest,"Rhythm, tempo removed",,,
+1,0.6579718488953906,None,sqrt,1.0,Random Forest,Scale transform,,,
+2,0.6502543979409245,balanced,sqrt,1.0,Random Forest,Scale transform,,,
+3,0.66935671624238,balanced,sqrt,1.0,Random Forest,Scale transform,,,
+4,0.6896981147438801,balanced,sqrt,1.0,Random Forest,Scale transform,,,
+5,0.6517272573387832,balanced,0.5,1.0,Random Forest,Scale transform,,,
+1,0.7760254646122723,balanced,0.5,1.0,Random Forest,"Rhythm, tempo removed + tempo",,,
+2,0.7761968381545112,None,1.0,1.0,Random Forest,"Rhythm, tempo removed + tempo",,,
+3,0.7855417847303153,balanced,1.0,1.0,Random Forest,"Rhythm, tempo removed + tempo",,,
+4,0.7891396862811425,None,0.5,2.0,Random Forest,"Rhythm, tempo removed + tempo",,,
+5,0.7766684051546099,balanced,1.0,2.0,Random Forest,"Rhythm, tempo removed + tempo",,,
+1,0.8275650599474705,,,,SVM-RBF,Rhythm (as before),10.0,None,0.01
+2,0.8161343685013044,,,,SVM-RBF,Rhythm (as before),10.0,None,0.01
+3,0.8324006340640807,,,,SVM-RBF,Rhythm (as before),100.0,None,0.001
+4,0.8137021975527517,,,,SVM-RBF,Rhythm (as before),100.0,None,0.001
+5,0.81585571364021,,,,SVM-RBF,Rhythm (as before),10.0,balanced,scale
+1,0.6642523713924261,,,,SVM-RBF,Tempo only,1.0,None,1000.0
+2,0.648816234193789,,,,SVM-RBF,Tempo only,1.0,None,1000.0
+3,0.6238493069589753,,,,SVM-RBF,Tempo only,1.0,None,1000.0
+4,0.6329102382575126,,,,SVM-RBF,Tempo only,1.0,None,1000.0
+5,0.6540272236761838,,,,SVM-RBF,Tempo only,1.0,None,1000.0
+1,0.6644218753363659,,,,SVM-RBF,"Rhythm, tempo removed",10.0,balanced,0.01
+2,0.6301531152840297,,,,SVM-RBF,"Rhythm, tempo removed",1.0,balanced,scale
+3,0.6479650587011898,,,,SVM-RBF,"Rhythm, tempo removed",10.0,None,0.01
+4,0.6550744414346221,,,,SVM-RBF,"Rhythm, tempo removed",10.0,None,scale
+5,0.6455594845462166,,,,SVM-RBF,"Rhythm, tempo removed",100.0,None,0.001
+1,0.7041646479390407,,,,SVM-RBF,Scale transform,10.0,None,scale
+2,0.7185448668600151,,,,SVM-RBF,Scale transform,10.0,balanced,0.01
+3,0.7041184169313467,,,,SVM-RBF,Scale transform,10.0,None,0.1
+4,0.7546256537197708,,,,SVM-RBF,Scale transform,10.0,None,scale
+5,0.6909423720133891,,,,SVM-RBF,Scale transform,10.0,balanced,0.1
+1,0.7266337212765294,,,,SVM-RBF,"Rhythm, tempo removed + tempo",10.0,None,0.01
+2,0.7054954847598145,,,,SVM-RBF,"Rhythm, tempo removed + tempo",10.0,None,scale
+3,0.7066922490400668,,,,SVM-RBF,"Rhythm, tempo removed + tempo",100.0,balanced,0.001
+4,0.7322072488457302,,,,SVM-RBF,"Rhythm, tempo removed + tempo",10.0,None,0.01
+5,0.723893437374259,,,,SVM-RBF,"Rhythm, tempo removed + tempo",10.0,None,0.01

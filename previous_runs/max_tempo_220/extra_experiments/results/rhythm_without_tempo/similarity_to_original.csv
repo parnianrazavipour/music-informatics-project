@@ -1,0 +1,40 @@
+condition,kind,rate,representation,median similarity,clips above 0.95 (%)
+original,original,1.0,Cyclic tempogram (as before),0.9999999999999998,100.0
+original,original,1.0,Shifted cyclic tempogram,0.9999999999999998,100.0
+original,original,1.0,Scale transform,0.9999999999999998,100.0
+roundtrip_0.90,roundtrip,0.9,Cyclic tempogram (as before),0.9979813862884457,100.0
+roundtrip_0.90,roundtrip,0.9,Shifted cyclic tempogram,0.9979304544985148,98.71060171919771
+roundtrip_0.90,roundtrip,0.9,Scale transform,0.9800632580074735,88.53868194842407
+roundtrip_0.95,roundtrip,0.95,Cyclic tempogram (as before),0.9977681137948915,100.0
+roundtrip_0.95,roundtrip,0.95,Shifted cyclic tempogram,0.9977132484861759,98.56733524355302
+roundtrip_0.95,roundtrip,0.95,Scale transform,0.9789536238858344,86.10315186246417
+roundtrip_0.98,roundtrip,0.98,Cyclic tempogram (as before),0.9978100881260461,100.0
+roundtrip_0.98,roundtrip,0.98,Shifted cyclic tempogram,0.9977186766167611,98.8538681948424
+roundtrip_0.98,roundtrip,0.98,Scale transform,0.9784454673897784,86.81948424068769
+roundtrip_1.02,roundtrip,1.02,Cyclic tempogram (as before),0.9976801103923321,100.0
+roundtrip_1.02,roundtrip,1.02,Shifted cyclic tempogram,0.997602377364356,98.71060171919771
+roundtrip_1.02,roundtrip,1.02,Scale transform,0.9774620317918226,84.9570200573066
+roundtrip_1.05,roundtrip,1.05,Cyclic tempogram (as before),0.9974968651199726,100.0
+roundtrip_1.05,roundtrip,1.05,Shifted cyclic tempogram,0.9973177712857029,98.71060171919771
+roundtrip_1.05,roundtrip,1.05,Scale transform,0.9759629138364248,83.66762177650429
+roundtrip_1.10,roundtrip,1.1,Cyclic tempogram (as before),0.9973375617031849,100.0
+roundtrip_1.10,roundtrip,1.1,Shifted cyclic tempogram,0.9972169006471778,98.71060171919771
+roundtrip_1.10,roundtrip,1.1,Scale transform,0.9743407563007108,82.52148997134671
+stretch_0.90,stretch,0.9,Cyclic tempogram (as before),0.8218308393169307,9.312320916905444
+stretch_0.90,stretch,0.9,Shifted cyclic tempogram,0.9833741586529738,86.81948424068769
+stretch_0.90,stretch,0.9,Scale transform,0.9886348321645635,99.2836676217765
+stretch_0.95,stretch,0.95,Cyclic tempogram (as before),0.8753486824151859,17.191977077363894
+stretch_0.95,stretch,0.95,Shifted cyclic tempogram,0.9963117185317261,98.28080229226362
+stretch_0.95,stretch,0.95,Scale transform,0.9878392459007034,98.71060171919771
+stretch_0.98,stretch,0.98,Cyclic tempogram (as before),0.9680265358861446,63.75358166189111
+stretch_0.98,stretch,0.98,Shifted cyclic tempogram,0.9772674107042583,78.79656160458453
+stretch_0.98,stretch,0.98,Scale transform,0.9889454647292751,98.8538681948424
+stretch_1.02,stretch,1.02,Cyclic tempogram (as before),0.9700976640660608,68.62464183381088
+stretch_1.02,stretch,1.02,Shifted cyclic tempogram,0.9778852563343025,81.23209169054442
+stretch_1.02,stretch,1.02,Scale transform,0.9880510630719928,98.28080229226362
+stretch_1.05,stretch,1.05,Cyclic tempogram (as before),0.8847105331190239,19.340974212034386
+stretch_1.05,stretch,1.05,Shifted cyclic tempogram,0.9975792949537745,94.98567335243553
+stretch_1.05,stretch,1.05,Scale transform,0.9859163624763452,97.56446991404012
+stretch_1.10,stretch,1.1,Cyclic tempogram (as before),0.8317284241925619,11.174785100286533
+stretch_1.10,stretch,1.1,Shifted cyclic tempogram,0.9969415820859624,94.84240687679083
+stretch_1.10,stretch,1.1,Scale transform,0.983628299345303,96.27507163323781

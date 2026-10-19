@@ -1,17 +1,22 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import librosa
 from joblib import Parallel, delayed
 from scipy.interpolate import interp1d
+from scipy.signal import get_window
 
 # Features of every clip in all 13 versions, for the extra experiments.
 # timbral_features and the rhythm part of rhythm_features are the same code as in the main notebooks,
-# so the reference feature sets give the same numbers. New here: the shifted cyclic tempogram and the scale transform.
+# so the reference feature sets give the same numbers. The rhythm settings follow the updated src/Rythm_extraction.py,
+# except the upper tempo limit (280 instead of 220 BPM).
+# New here: the shifted cyclic tempogram and the scale transform.
 
-SR, HOP, WIN = 22050, 512, 384               # sampling rate, novelty hop (23 ms), tempogram window (8.9 s)
+SR, HOP, WIN, N_FFT_TEMPOGRAM = 22050, 512, 512, 4096   # sampling rate, novelty hop (23 ms), tempogram window (11.9 s), zero-padded FFT size
 N_FFT, N_MFCC, N_MELS = 2048, 13, 128
 M, TAU_0, CYCLIC_MIN, CYCLIC_MAX = 15, 60.0, 30.0, 480.0
-TACTUS_MIN, TACTUS_MAX = 40.0, 240.0
+TACTUS_MIN, TACTUS_MAX = 60.0, 280.0          # src/Rythm_extraction.py uses 220, see the README
 N_SCALE, SCALE_MIN_LAG, SCALE_MAX_LAG, SCALE_POINTS = 20, 0.1, 4.0, 256   # lags in seconds
 
 TIMBRAL_COLUMNS = [f'mfcc_{i:02d}_{statistic}' for i in range(N_MFCC) for statistic in ['mean', 'std']] \
@@ -19,6 +24,7 @@ TIMBRAL_COLUMNS = [f'mfcc_{i:02d}_{statistic}' for i in range(N_MFCC) for statis
 CYCLIC_COLUMNS = [f'cyclic_bin_{i}' for i in range(M)]
 SHIFTED_COLUMNS = [f'shifted_bin_{i}' for i in range(M)]
 RATIO_COLUMNS = ['R_2_4', 'R_3_4', 'R_4_4']
+PLP_COLUMNS = ['plp_confidence', 'plp_alignment']
 SCALE_COLUMNS = [f'scale_{i:02d}' for i in range(N_SCALE)]
 
 RATES = [0.90, 0.95, 0.98, 1.02, 1.05, 1.10]
@@ -40,7 +46,10 @@ def change_tempo(y, rate):
     # plays y `rate` times as fast with the same pitch (phase vocoder, as in the main notebooks)
     if rate == 1.0:
         return y
-    stretched = librosa.effects.time_stretch(y.astype(np.float64), rate=rate, n_fft=2048, hop_length=512)
+    with warnings.catch_warnings():
+        # librosa 1.0 warns that it ignores these two arguments; they are kept to match the main notebooks
+        warnings.simplefilter('ignore', FutureWarning)
+        stretched = librosa.effects.time_stretch(y.astype(np.float64), rate=rate, n_fft=2048, hop_length=512)
     return stretched.astype(np.float32)
 
 
@@ -80,6 +89,22 @@ def timbral_features(y):
 #--------------------------------------------------------------------------------
 # Rhythm features (same as the rhythm notebooks) plus the two tempo-free versions
 
+window = get_window('hann', WIN, fftbins=True)
+WINDOW_CORRECTION = np.correlate(window, window, mode='full')[WIN - 1:]
+WINDOW_CORRECTION = np.maximum(WINDOW_CORRECTION/WINDOW_CORRECTION[0], 0.05)   # autocorrelation of the Hann window
+
+
+def fourier_tempogram(novelty):
+    # Fourier tempogram with a zero-padded FFT: a tempo value every 0.63 BPM instead of every 5 BPM.
+    # n_fft is longer than the novelty curve on purpose (that is the zero padding), so librosa's warning is hidden.
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        tempogram = np.abs(librosa.stft(novelty, n_fft=N_FFT_TEMPOGRAM, hop_length=1, win_length=WIN,
+                                        window='hann', center=True))
+    tempo_axis = librosa.fft_frequencies(sr=SR/HOP, n_fft=N_FFT_TEMPOGRAM)*60
+    return tempogram, tempo_axis
+
+
 def cyclic_tempogram(fourier_tempogram, tempo_axis):
     # 30-480 BPM on a log axis with M bins per octave, summed over the octaves (Muller 6.34),
     # averaged over time and normalised to length 1
@@ -101,28 +126,47 @@ def shift_to_strongest_bin(cyclic):
     return np.roll(cyclic, -int(np.argmax(cyclic)))
 
 
-def estimate_tau_hat(fourier_tempogram, tempo_axis):
-    # strongest tempo of the time-averaged Fourier tempogram between TACTUS_MIN and TACTUS_MAX (Muller 6.32-6.33),
-    # refined by a parabola through the peak bin and its two neighbours (on a log scale)
-    average = fourier_tempogram.mean(axis=1)
-    candidates = np.where((tempo_axis >= TACTUS_MIN) & (tempo_axis <= TACTUS_MAX))[0]
-    k = candidates[np.argmax(average[candidates])]
-    a, b, c = np.log(average[k - 1:k + 2] + 1e-12)
-    curvature = a - 2*b + c
-    offset = float(np.clip(0.5*(a - c)/curvature, -0.5, 0.5)) if curvature < 0 else 0.0
-    return float(tempo_axis[k] + offset*(tempo_axis[1] - tempo_axis[0]))
+def estimate_tau_hat(fourier_tempogram, fourier_axis, autocorr_tempogram, autocorr_axis):
+    # Combined estimate (Muller p. 330): the Fourier tempogram favours a tempo and its multiples, the
+    # autocorrelation tempogram a tempo and its fractions, so their product keeps the tempo both agree on.
+    # Both are averaged over time and scaled to 0-1 between TACTUS_MIN and TACTUS_MAX.
+    fourier = fourier_tempogram.mean(axis=1)
+    autocorr = autocorr_tempogram.mean(axis=1)
+    usable = np.isfinite(autocorr_axis) & (autocorr_axis > 0) & np.isfinite(autocorr)
+    order = np.argsort(autocorr_axis[usable])
+    autocorr = interp1d(autocorr_axis[usable][order], autocorr[usable][order],
+                        bounds_error=False, fill_value=0.0)(fourier_axis)
+    autocorr = np.maximum(0.0, autocorr)
+
+    in_range = (fourier_axis >= TACTUS_MIN) & (fourier_axis <= TACTUS_MAX)
+    f = fourier[in_range] - fourier[in_range].min()
+    a = autocorr[in_range] - autocorr[in_range].min()
+    combined = np.zeros_like(fourier)
+    combined[in_range] = f/(f.max() + 1e-8)*a/(a.max() + 1e-8)
+
+    # strongest tempo, refined by a parabola through the peak bin and its two neighbours
+    k = np.where(in_range)[0][np.argmax(combined[in_range])]
+    left, peak, right = combined[k - 1:k + 2]
+    curvature = left - 2*peak + right
+    offset = float(np.clip(0.5*(left - right)/curvature, -0.5, 0.5)) if abs(curvature) > 1e-12 else 0.0
+    return float(fourier_axis[k] + offset*(fourier_axis[k + 1] - fourier_axis[k - 1])/2)
 
 
 def bar_ratios(autocorr_tempogram, tempo_axis, tau_hat):
-    # time-averaged autocorrelation at 2, 3 and 4 beats, divided by its value at 1 beat
-    average = autocorr_tempogram.mean(axis=1)
+    # time-averaged autocorrelation, corrected for the Hann window (which damps long lags), at 2, 3 and 4 beats
+    # divided by its value at 1 beat. Each value is the strongest one within ±5% of the target tempo.
+    average = autocorr_tempogram.mean(axis=1)/WINDOW_CORRECTION
     usable = np.isfinite(tempo_axis) & (tempo_axis > 0) & np.isfinite(average)
     order = np.argsort(tempo_axis[usable])
     curve = interp1d(tempo_axis[usable][order], average[usable][order], bounds_error=False, fill_value=0.0)
-    at_beat = float(curve(tau_hat))
-    if at_beat <= 0:
+
+    def strongest_near(bpm):
+        return float(np.max(curve(np.linspace(0.95*bpm, 1.05*bpm, 11))))
+
+    at_beat = strongest_near(tau_hat)
+    if at_beat <= 1e-8:
         raise ValueError('autocorrelation at the beat is zero, bar ratios are undefined')
-    return {name: float(curve(tau_hat/beats))/at_beat for name, beats in zip(RATIO_COLUMNS, [2, 3, 4])}
+    return {name: strongest_near(tau_hat/beats)/at_beat for name, beats in zip(RATIO_COLUMNS, [2, 3, 4])}
 
 
 def scale_transform(novelty):
@@ -146,18 +190,21 @@ def scale_transform(novelty):
 
 def rhythm_features(y):
     novelty = librosa.onset.onset_strength(y=y, sr=SR, hop_length=HOP)
-    fourier = np.abs(librosa.feature.fourier_tempogram(onset_envelope=novelty, sr=SR, hop_length=HOP, win_length=WIN))
-    fourier_axis = librosa.fourier_tempo_frequencies(sr=SR, hop_length=HOP, win_length=WIN)
-    autocorr = librosa.feature.tempogram(onset_envelope=novelty, sr=SR, hop_length=HOP, win_length=WIN)
+    fourier, fourier_axis = fourier_tempogram(novelty)
+    # the autocorrelation tempogram uses the novelty curve with its mean removed (negative values set to 0)
+    centred = np.maximum(0.0, novelty - np.mean(novelty))
+    autocorr = librosa.feature.tempogram(onset_envelope=centred, sr=SR, hop_length=HOP, win_length=WIN)
     autocorr_axis = librosa.tempo_frequencies(n_bins=autocorr.shape[0], sr=SR, hop_length=HOP)
     pulse = librosa.beat.plp(onset_envelope=novelty, sr=SR, hop_length=HOP, win_length=WIN,
                              tempo_min=TACTUS_MIN, tempo_max=TACTUS_MAX)
 
-    tau_hat = estimate_tau_hat(fourier, fourier_axis)
+    tau_hat = estimate_tau_hat(fourier, fourier_axis, autocorr, autocorr_axis)
     cyclic = cyclic_tempogram(fourier, fourier_axis)
     feats = dict(zip(CYCLIC_COLUMNS, map(float, cyclic)))
     feats.update(bar_ratios(autocorr, autocorr_axis, tau_hat))
     feats['plp_confidence'] = float(np.mean(pulse))
+    # how well the accents of the novelty curve line up with the pulse (cosine similarity)
+    feats['plp_alignment'] = float(np.dot(novelty, pulse)/(np.linalg.norm(novelty)*np.linalg.norm(pulse) + 1e-8))
     feats['tau_hat'] = tau_hat
     feats.update(zip(SHIFTED_COLUMNS, map(float, shift_to_strongest_bin(cyclic))))
     feats.update(zip(SCALE_COLUMNS, map(float, scale_transform(novelty))))

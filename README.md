@@ -22,22 +22,25 @@ In this project we classify the 8 dance styles of the Ballroom dataset from audi
 
 | Macro-F1, tuned Random Forest | Original | -10% tempo | +10% tempo | Round trip |
 |---|---:|---:|---:|---:|
-| Rhythm features | 80.7% | 27.6% | 16.2% | 74.6% |
-| Tempo only | 59.1% | 13.4% | 8.9% | 59.2% |
+| Rhythm features | 81.8% | 23.3% | 17.7% | 70.6% |
+| Tempo only | 64.8% | 22.0% | 12.5% | 61.0% |
 | Timbral features | 47.1% | 46.3% | 45.2% | 43.7% |
 
 Mean over the 5 test folds; chance level is 12.5%. The SVM gives almost the same numbers (section 7). "Round trip" means the audio is stretched and then stretched back, so the tempo is the original one but the audio has gone through the same processing.
 
-The rhythm features reach about 80% macro-F1 on the original audio, but only about 16% when the music is played 10% faster. The round trip costs about 6 points, so most of the drop comes from the tempo change itself and very little from the processing. Our conclusion is that on Ballroom, most of what the rhythm models get right comes from the tempo of the music. This agrees with earlier work on the same dataset (section 9).
+These are the results of the current run, which uses the updated rhythm extraction (`src/Rythm_extraction.py`) with a tempo range of 60–280 BPM. The two earlier runs are summarised in [section 7.6](#76-earlier-runs).
 
-The animation at the top shows the same thing. When the tempo moves away from the original, the rhythm and tempo-only models fall towards chance level while the timbral model stays about where it was. The rhythm model starts to predict the dance whose usual tempo the stretched clip now has.
+The rhythm features reach about 82% macro-F1 on the original audio, but only about 18% when the music is played 10% faster. The round trip costs about 11 points, so most of the drop comes from the tempo change itself and less from the processing. Our conclusion is that on Ballroom, most of what the rhythm models get right comes from the tempo of the music. This agrees with earlier work on the same dataset (section 9).
+
+The animation at the top (made from the first run, see section 7.6) shows the same thing. When the tempo moves away from the original, the rhythm and tempo-only models fall towards chance level while the timbral model stays about where it was. The rhythm model starts to predict the dance whose usual tempo the stretched clip now has.
 
 What the project contains:
 
-- Timbral features (MFCCs, zero-crossing rate, spectral centroid) and rhythm features (cyclic tempogram, autocorrelation bar ratios, PLP) computed with librosa, plus a refined global tempo estimate.
+- Timbral features (MFCCs, zero-crossing rate, spectral centroid) and rhythm features (cyclic tempogram, autocorrelation bar ratios, PLP confidence and PLP alignment) computed with librosa, plus a global tempo estimate that combines the Fourier and the autocorrelation tempogram.
 - Stratified and grouped 5-fold cross-validation with a nested grid search, so that duplicate recordings never end up in both training and test data.
 - 13 versions of every clip: the original, six time-stretches and six round trips.
 - Feature importance, confusion matrices and per-dance results that explain where the drop comes from.
+- Extra experiments with tempo-free rhythm features and with timbre and rhythm together ([`extra_experiments/`](extra_experiments/README.md)).
 
 Terms like macro-F1, tempogram or round trip are explained in the [glossary](#17-glossary).
 
@@ -101,7 +104,7 @@ flowchart TD
     end
     subgraph S4["4. Features (one row per clip and version)"]
         C1["Timbral<br/>30 numbers"]
-        C2["Rhythm<br/>19 numbers"]
+        C2["Rhythm<br/>20 numbers"]
         C3["Tempo only<br/>1 number"]
     end
     subgraph S5["5. Training, original audio only"]
@@ -123,7 +126,7 @@ flowchart TD
 | 1. Load audio | Every `.wav` is read as mono 22,050 Hz audio; the folder name is the label | 22 kHz keeps everything up to 11 kHz, which is enough for these features | `Timbral_extraction.ipynb`; section 3 of the rhythm notebooks | 698 labelled clips |
 | 2. Make folds | The clips are split into 5 folds with the same share of each dance; both copies of a duplicate go into the same fold | Every clip is tested exactly once, and never on a copy of a training recording | `make_folds` (every notebook) | `folds.csv` |
 | 3. Make versions | Every clip is time-stretched by 0.90, 0.95, 0.98, 1.02, 1.05 and 1.10, and stretched back for the round trips | Change only the tempo; the round trip shows the effect of the processing alone | `apply_condition` | 13 versions per clip (9,074 in total) |
-| 4. Extract features | Every version is described by 30 timbral, 19 rhythm and 1 tempo value | Each set contains one kind of information | `timbral_features`, `rhythm_features` | `ballroom_timbral_features.csv`, `timbral_conditions.csv`, `rhythm_conditions.csv` |
+| 4. Extract features | Every version is described by 30 timbral, 20 rhythm and 1 tempo value | Each set contains one kind of information | `timbral_features`, `rhythm_features` | `ballroom_timbral_features.csv`, `timbral_conditions.csv`, `rhythm_conditions.csv` |
 | 5. Train | For each fold, a default model and a tuned model (grid search on 3 inner folds) are trained on the other 4 folds, using the original audio only | The settings are chosen without seeing the test fold | `run_nested_cv` | 5 folds × 2 models, for every feature set and classifier |
 | 6. Test | Each fold's models predict their test fold, in all 13 versions | Same clips and same models; only the audio version changes | `evaluate_conditions` (rhythm), section 16 (timbral) | `held_out_predictions.csv` |
 | 7. Score | Macro-F1, accuracy and flip rate per version, mean ± SD over the 5 folds | Every version is compared with the original audio on the same clips | `classification_scores`, `summarize_folds` | `robustness_summary.csv`, figures |
@@ -137,16 +140,16 @@ The timbral notebooks do steps 2-8 for the timbral features (step 1 and the feat
 
 | Version | Estimated tempo `tau_hat` (BPM) | Timbral model | Rhythm model | Tempo-only model |
 |---|---:|---|---|---|
-| -10% | 156.7 | Waltz | Rumba | Waltz |
-| -5% | 165.6 | Waltz | Waltz | Waltz |
-| -2% | 170.8 | Waltz | Waltz | Waltz |
-| original | 174.2 | Waltz | Waltz | Waltz |
+| -10% | 156.8 | Waltz | Rumba | Jive |
+| -5% | 165.4 | Waltz | Waltz | Waltz |
+| -2% | 171.0 | Waltz | Waltz | Waltz |
+| original | 174.1 | Waltz | Waltz | Waltz |
 | +2% | 177.8 | Waltz | VienneseWaltz | VienneseWaltz |
-| +5% | 183.0 | Waltz | VienneseWaltz | ChaChaCha |
+| +5% | 183.2 | Waltz | Rumba | Rumba |
 | +10% | 191.8 | Waltz | Rumba | Rumba |
 | round trip of +10% | 174.3 | Waltz | Waltz | Waltz |
 
-The estimated tempo follows the stretch (174.2 × 1.10 ≈ 191.6). When it reaches the VienneseWaltz range (around 177 BPM, see section 8), the rhythm and tempo-only models predict VienneseWaltz, and close to 190-200 BPM they predict Rumba. After the round trip the tempo is back at 174 BPM and the prediction is Waltz again. The timbral model cannot see the tempo and predicts Waltz every time. Section 7 shows the same pattern over all 698 clips.
+The estimated tempo follows the stretch (174.1 × 1.10 ≈ 191.5). When it reaches the VienneseWaltz range (around 178 BPM, see section 8), the rhythm and tempo-only models predict VienneseWaltz, and from about 183 BPM, on the way to Rumba's 199 BPM, they predict Rumba. After the round trip the tempo is back at 174 BPM and the prediction is Waltz again. The timbral model cannot see the tempo and predicts Waltz every time. Section 7 shows the same pattern over all 698 clips.
 
 ## 4. Features
 
@@ -160,19 +163,20 @@ The estimated tempo follows the stretch (174.2 × 1.10 ≈ 191.6). When it reach
 
 We use 22,050 Hz mono audio, frames of 2,048 samples (93 ms), a hop of 512 samples (23 ms) and 128 Mel bands. The mean and std over all frames do not depend on the order of the frames, so these features cannot see the beat. That makes the timbral set a useful negative control: if it changed a lot under time-stretching, the problem would be the processing and not the tempo.
 
-### Rhythm set (19 inputs)
+### Rhythm set (20 inputs)
 
-All rhythm features are computed from the novelty curve (spectral flux, `librosa.onset.onset_strength`), which has a peak wherever a note or a drum hit starts. From the novelty curve we compute a Fourier tempogram and an autocorrelation tempogram with a window of 384 frames (8.9 s, which covers several bars even for the slowest dance).
+All rhythm features are computed from the novelty curve (spectral flux, `librosa.onset.onset_strength`), which has a peak wherever a note or a drum hit starts. From the novelty curve we compute a Fourier tempogram (with a zero-padded FFT of 4096 points, so there is a value every 0.63 BPM) and an autocorrelation tempogram (from the novelty curve with its mean removed), both with a window of 512 frames (11.9 s, which covers several bars even for the slowest dance). The settings follow the updated `src/Rythm_extraction.py`, except the upper tempo limit (section 11).
 
 | Feature | Inputs | Describes |
 |---|---:|---|
 | Cyclic tempogram (Müller, 2015, ch. 6) | 15 | the Fourier tempogram from 30 to 480 BPM folded into one octave, 15 bins per octave (4.7% per bin); which tempo classes are present, independent of the octave |
-| Bar ratios `R_2_4`, `R_3_4`, `R_4_4` | 3 | autocorrelation at 2, 3 and 4 beats divided by its value at 1 beat; meant to describe the metre (a Waltz repeats after 3 beats, a 4/4 dance after 2 and 4). In practice this signal turned out to be weak, see section 12 |
-| PLP confidence | 1 | mean of the predominant local pulse curve (40-240 BPM); how clear and steady the pulse is |
+| Bar ratios `R_2_4`, `R_3_4`, `R_4_4` | 3 | autocorrelation at 2, 3 and 4 beats divided by its value at 1 beat, corrected for the Hann window and taking the strongest value within ±5%; meant to describe the metre (a Waltz repeats after 3 beats, a 4/4 dance after 2 and 4). In practice this signal turned out to be weak, see section 12 |
+| PLP confidence | 1 | mean of the predominant local pulse curve (60-280 BPM); how clear and steady the pulse is |
+| PLP alignment | 1 | cosine similarity between the novelty curve and the PLP curve; how well the accents of the music line up with the pulse |
 
 ### Tempo-only set (1 input)
 
-`tau_hat` is the strongest tempo between 40 and 240 BPM in the time-averaged Fourier tempogram, refined with parabolic interpolation. This baseline shows how much of the task can be solved from the tempo alone.
+`tau_hat` is the strongest tempo between 60 and 280 BPM of the time-averaged Fourier tempogram multiplied by the time-averaged autocorrelation tempogram (Müller, 2015, p. 330), refined with parabolic interpolation. The Fourier tempogram favours a tempo and its multiples and the autocorrelation tempogram a tempo and its fractions, so their product keeps the tempo both agree on. This baseline shows how much of the task can be solved from the tempo alone.
 
 ## 5. Classifiers and evaluation
 
@@ -215,29 +219,29 @@ All numbers are for the tuned models, averaged over the 5 test folds. All tables
 |---|---|---|---|
 | Timbral | Random Forest | 48.71 ± 3.62 | 47.22 ± 3.88 |
 | Timbral | SVM-RBF | 49.57 ± 3.47 | 47.20 ± 3.77 |
-| Rhythm | Random Forest | 81.38 ± 2.83 | 80.75 ± 3.06 |
-| Rhythm | SVM-RBF | 80.80 ± 3.46 | 80.25 ± 3.54 |
-| Tempo only | Random Forest | 60.03 ± 2.16 | 59.15 ± 2.63 |
-| Tempo only | SVM-RBF | 61.89 ± 2.94 | 60.05 ± 3.81 |
+| Rhythm | Random Forest | 82.24 ± 2.19 | 81.76 ± 2.56 |
+| Rhythm | SVM-RBF | 82.95 ± 2.75 | 82.85 ± 2.86 |
+| Tempo only | Random Forest | 65.90 ± 3.56 | 64.80 ± 3.33 |
+| Tempo only | SVM-RBF | 67.05 ± 1.71 | 65.35 ± 2.14 |
 
-Chance level is 15.9% accuracy and 12.5% macro recall, so all three feature sets are well above chance. The rhythm set is the best, and the tempo alone already reaches about 60%.
+Chance level is 15.9% accuracy and 12.5% macro recall, so all three feature sets are well above chance. The rhythm set is the best, and the tempo alone already reaches about 65%.
 
 <p align="center"><img src="results/rhythm_random_forest/comparison/confusion_normalized_tuned.png" width="820" alt="Row-normalised confusion matrices of the tuned Random Forest on the original audio, rhythm set and tempo-only set"></p>
 
-Confusion matrices of the tuned Random Forest on the original audio (left: rhythm, right: tempo only). The tempo-only model gets every dance right more often than chance, but it mixes up dances with similar tempi: Samba with Quickstep and Rumba (around 200 BPM), and Waltz with Jive (around 172 BPM).
+Confusion matrices of the tuned Random Forest on the original audio (left: rhythm, right: tempo only). The tempo-only model gets every dance right more often than chance, but it mixes up dances with similar tempi: Samba with Quickstep and Rumba (around 200 BPM), and Waltz with Jive (around 170 BPM).
 
 ### 7.2 Macro-F1 (%) when only the tempo changes
 
 | Tempo change | Timbral RF | Timbral SVM | Rhythm RF | Rhythm SVM | Tempo RF | Tempo SVM |
 |---|---:|---:|---:|---:|---:|---:|
-| -10% | 46.3 | 47.7 | 27.6 | 29.5 | 13.4 | 10.0 |
-| -5% | 46.5 | 47.6 | 45.4 | 44.9 | 24.0 | 22.2 |
-| -2% | 44.7 | 47.1 | 67.0 | 66.6 | 41.3 | 36.0 |
-| 0% (original) | 47.1 | 47.4 | 80.7 | 80.2 | 59.1 | 60.0 |
-| +2% | 44.8 | 47.7 | 64.4 | 65.4 | 39.6 | 37.4 |
-| +5% | 46.5 | 47.5 | 40.9 | 36.7 | 18.1 | 19.1 |
-| +10% | 45.2 | 47.0 | 16.2 | 17.6 | 8.9 | 9.2 |
-| Round trip, mean of 6 | 43.7 | 45.1 | 74.6 | 74.9 | 59.2 | 60.7 |
+| -10% | 46.3 | 47.7 | 23.3 | 27.3 | 22.0 | 12.2 |
+| -5% | 46.5 | 47.6 | 46.7 | 47.3 | 33.3 | 29.1 |
+| -2% | 44.7 | 47.1 | 63.4 | 66.5 | 47.8 | 37.5 |
+| 0% (original) | 47.1 | 47.4 | 81.8 | 82.9 | 64.8 | 65.3 |
+| +2% | 44.8 | 47.7 | 66.3 | 67.0 | 49.4 | 45.6 |
+| +5% | 46.5 | 47.5 | 42.4 | 39.0 | 26.3 | 20.4 |
+| +10% | 45.2 | 47.0 | 17.7 | 15.1 | 12.5 | 10.1 |
+| Round trip, mean of 6 | 43.7 | 45.1 | 70.6 | 73.4 | 61.0 | 63.1 |
 
 <p align="center"><img src="results/rhythm_random_forest/comparison/feature_set_comparison.png" width="900" alt="Macro-F1 of the tuned Random Forest for the three feature sets: left, under time-stretching; right, after the round-trip control"></p>
 
@@ -253,16 +257,16 @@ Average change in macro-F1 over the six stretches, compared with the six round t
 |---|---|---:|---:|---:|---:|
 | Timbral | RF | -1.4 | -3.4 | ≈ 0 | 15% |
 | Timbral | SVM | -0.0 | -2.3 | ≈ 0 | 14% |
-| Rhythm | RF | -37.2 | -6.1 | -31.0 | 51% |
-| Rhythm | SVM | -36.8 | -5.3 | -31.4 | 51% |
-| Tempo only | RF | -34.9 | +0.0 | -35.0 | 70% |
-| Tempo only | SVM | -37.7 | +0.7 | -38.4 | 74% |
+| Rhythm | RF | -38.5 | -11.2 | -27.3 | 52% |
+| Rhythm | SVM | -39.1 | -9.5 | -29.6 | 52% |
+| Tempo only | RF | -32.9 | -3.8 | -29.2 | 59% |
+| Tempo only | SVM | -39.5 | -2.2 | -37.3 | 68% |
 
 "Caused by tempo" is the stretched value minus the round-trip value. For the timbral set the stretch hurts less than the round trip, so we see no tempo effect there.
 
 <p align="center"><img src="results/rhythm_random_forest/rhythm/time_stretch/per_genre_f1_change.png" width="900" alt="Heatmap of the per-dance F1 change of the tuned rhythm Random Forest for every stretch and round trip"></p>
 
-Change in F1 per dance for the rhythm Random Forest. Every dance gets worse under stretching, by 42-87 points at +10% (left six columns). The round trips (right six columns) cost 0-10 points, except for Samba (12-22 points), which is the dance most affected by the processing.
+Change in F1 per dance for the rhythm Random Forest. Every dance gets worse under stretching, by 50-83 points at +10% (left six columns). The round trips (right six columns) cost 0-12 points for most dances, but 25-35 points for Jive and Samba, the dances most affected by the processing.
 
 ### 7.4 Which features the models use
 
@@ -270,9 +274,9 @@ Group permutation importance: we shuffle one feature family across the test clip
 
 | Rhythm family | Inputs | Drop, RF (pp) | Drop, SVM (pp) |
 |---|---:|---:|---:|
-| Cyclic tempogram | 15 | 67.7 | 65.6 |
-| Bar ratios | 3 | 3.1 | 4.7 |
-| PLP confidence | 1 | 3.0 | 3.7 |
+| Cyclic tempogram | 15 | 65.7 | 63.9 |
+| PLP confidence and alignment | 2 | 14.0 | 19.4 |
+| Bar ratios | 3 | 2.3 | 2.9 |
 
 | Timbral family | Inputs | Drop, RF (pp) | Drop, SVM (pp) |
 |---|---:|---:|---:|
@@ -280,54 +284,95 @@ Group permutation importance: we shuffle one feature family across the test clip
 | Spectral centroid | 2 | 7.4 | 3.2 |
 | Zero-crossing rate | 2 | 0.5 | 0.4 |
 
-The rhythm model depends almost completely on the cyclic tempogram, which is the rhythm feature that contains the tempo class (see section 8).
+The rhythm model depends mostly on the cyclic tempogram, which is the rhythm feature that contains the tempo class (see section 8). The two PLP inputs come second, mostly because of the PLP alignment.
 
 ### 7.5 Sanity checks
 
-- Does the tempo estimate follow the stretch? The median of `tau_hat(stretched) / tau_hat(original)` is equal to the stretch rate (0.90 … 1.10, to two decimals). 71-91% of the clips are within 1% of the expected ratio. Most of the others are octave jumps, where the estimate switches between a tempo and its double; these are 2-17% of the clips depending on the stretch, with the most at -10%. After a round trip, 92-93% of the clips are back within 1% of their original tempo ([figure](results/rhythm_random_forest/comparison/tempo_check.png)).
+- Does the tempo estimate follow the stretch? The median of `tau_hat(stretched) / tau_hat(original)` is equal to the stretch rate (0.90 … 1.10, to two decimals). 89-95% of the clips are within 1% of the expected ratio. Octave jumps, where the estimate switches between a tempo and its double, are 2-7% of the clips depending on the stretch, with the most at +10%. After a round trip, 89-92% of the clips are back within 1% of their original tempo ([figure](results/rhythm_random_forest/comparison/tempo_check.png)).
 - Could the timbral model be recognising albums from their loudness? `mfcc_00` mostly measures loudness, which depends on the mastering. Without it (28 inputs) the tuned macro-F1 is 46.11% (RF) and 48.51% (SVM), compared with 47.22% and 47.20% with it, so the model does not depend on it.
-- Does the tuning matter? Not much for the timbral and rhythm sets: the change is within the SD between folds and sometimes negative (rhythm RF: 82.25% default, 80.75% tuned). It matters a lot for the tempo-only SVM (41.07% → 60.05%).
+- Does the tuning matter? Not much for the timbral and rhythm sets: the change is within the SD between folds and sometimes negative (rhythm RF: 82.27% default, 81.76% tuned). It matters a lot for the tempo-only SVM (51.70% → 65.35%).
+
+### 7.6 Earlier runs
+
+We ran the experiment three times. Only the rhythm features changed between the runs; the folds, classifiers, tuning, stretching and timbral features stayed the same.
+
+| Run | Rhythm features | Where |
+|---|---|---|
+| First run | first version of `src/Rythm_extraction.py`: window of 384 frames, Fourier tempogram without zero padding, `tau_hat` from the Fourier tempogram only, no window correction, PLP confidence only (19 inputs), tempo range 40-240 BPM | git history (commit `df9d0b0`) |
+| Second run | updated `src/Rythm_extraction.py` (section 4), with the tempo range of the script, 60-220 BPM | [`previous_runs/max_tempo_220/`](previous_runs/max_tempo_220/README.md) |
+| **Current run** | updated `src/Rythm_extraction.py`, tempo range 60-280 BPM | this README and `results/` |
+
+Tuned models, Random Forest / SVM:
+
+| | First run | Second run | Current run |
+|---|---:|---:|---:|
+| Rhythm, macro-F1 on original audio (%) | 80.7 / 80.2 | 81.9 / 82.7 | 81.8 / 82.9 |
+| Rhythm, macro-F1 at +10% (%) | 16.2 / 17.6 | 15.1 / 15.9 | 17.7 / 15.1 |
+| Rhythm, drop in the round trip (pp) | -6.1 / -5.3 | -11.9 / -12.2 | -11.2 / -9.5 |
+| Rhythm, drop caused by tempo (pp) | -31.0 / -31.4 | -27.1 / -26.6 | -27.3 / -29.6 |
+| Tempo only, macro-F1 on original audio (%) | 59.1 / 60.0 | 62.6 / 64.7 | 64.8 / 65.3 |
+| Tempo only, drop caused by tempo (pp) | -35.0 / -38.4 | -30.9 / -37.2 | -29.2 / -37.3 |
+| `tau_hat` follows the stretch within 1% (range over the six stretches) | 71-91% | 75-91% | 89-95% |
+| `tau_hat` within 4% of the BPM in the dataset logs (original audio) | 46% | 60% | 41% |
+| `tau_hat` within 4% of that BPM or a simple multiple (×2, ×3, ×½, ×⅓) | 83% | 94% | 95% |
+
+The updated extraction makes the rhythm and tempo-only models a little more accurate on the original audio, but more sensitive to the processing itself: the round trip costs the rhythm set about twice as much. With the upper limit of 220 BPM, fast dances stretched by +10% go over the limit and the tempo estimate jumps (only 75% of the clips follow the stretch at +10%), so the current run uses 280 BPM. With 280 BPM the estimate is more often at double the labelled tempo, but it follows every stretch best, and following the stretch is what this experiment needs. The conclusion is the same in all three runs: about 27-31 points of the rhythm score are lost when only the tempo changes.
+
+**How we chose the tempo range.** Before the current run we tested several tempo ranges for the updated tempo estimate. For every clip and every stretch, the estimate counts as correct if it changes exactly with the stretch: if a clip is played 10% faster, its real tempo is exactly 10% higher, so the estimate on the stretched clip should be the estimate on the original clip × the stretch rate, within 1%. This check does not use the dataset labels or any classifier results. The table shows the share of the 698 clips that pass (%):
+
+| Tempo range | -10% | -5% | -2% | +2% | +5% | +10% | Average |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| First run (first version of the tempo estimate, 40-240) | 71 | 79 | 84 | 91 | 88 | 88 | 83 |
+| 60-220 (second run, the value in `src/Rythm_extraction.py`) | 80 | 90 | 88 | 89 | 91 | 75 | 85 |
+| 60-240 | 76 | 78 | 82 | 87 | 88 | 87 | 83 |
+| 60-260 | 94 | 92 | 91 | 90 | 84 | 73 | 88 |
+| **60-280 (current run)** | **95** | **94** | **93** | **92** | **92** | **89** | **93** |
+| 60-300 | 95 | 94 | 93 | 93 | 93 | 92 | 93 |
+| 110-220 | 80 | 94 | 91 | 93 | 93 | 75 | 88 |
+| 120-240 | 71 | 77 | 83 | 89 | 89 | 88 | 83 |
+
+Every upper limit causes problems for dances whose estimated tempo, or half of it, lies close to the limit. With 220 or 260 BPM, fast dances stretched by +10% go over the limit (Quickstep at about 204-211 BPM becomes 224-232 BPM). With 240 BPM, a song at about 115 BPM can also be estimated at 230 BPM, so slower songs start to jump at small stretches. With 280 or 300 BPM even the fastest stretched songs (about 270 BPM) stay inside the range, and the estimate follows every stretch better than in the first run. 280 and 300 BPM give almost the same results; we use 280 BPM.
 
 ## 8. Discussion
 
-### Why the tempo alone gets about 60%
+### Why the tempo alone gets about 65%
 
 Each dance has its own tempo range. The table compares our estimated tempo per dance with the nominal dance tempi listed by Dixon et al. (2004):
 
 | Dance | Nominal tempo (BPM) | Our median `tau_hat` (BPM) | Middle 50% of clips |
 |---|---|---:|---|
-| Tango | 128-132 | 128.4 | 127.4-133.0 |
-| ChaChaCha | 128 | 141.3 | 124.0-226.7 (two groups, around 124 and around 230) |
-| Jive | 176 | 171.7 | 167.4-175.3 |
-| Waltz | 84-90 | 171.8 | 166.4-174.1 |
-| VienneseWaltz | 174-180 | 177.2 | 175.5-179.9 |
-| Rumba | 104 | 199.6 | 191.0-207.5 |
-| Samba | 200 (beat counted in eighth notes) | 199.9 | 153.8-204.0 |
-| Quickstep | 200-208 | 204.0 | 202.0-205.8 |
+| Tango | 128-132 | 255.6 | 128.7-256.5 (two groups, around 129 and around 256) |
+| ChaChaCha | 128 | 248.0 | 247.3-248.2 |
+| Jive | 176 | 172.1 | 166.7-175.0 |
+| Waltz | 84-90 | 168.8 | 87.0-173.6 (two groups, around 87 and around 170) |
+| VienneseWaltz | 174-180 | 177.7 | 175.9-180.1 |
+| Rumba | 104 | 199.4 | 191.7-207.7 |
+| Samba | 200 (beat counted in eighth notes) | 199.5 | 109.7-203.7 (two groups, around 110 and around 200) |
+| Quickstep | 200-208 | 203.7 | 201.7-205.7 |
 
-For Tango, Jive, VienneseWaltz, Samba and Quickstep the estimate is equal or close to the nominal tempo. For most Rumba and Waltz clips, and about half of the ChaChaCha clips, it is twice the nominal tempo. This is called an octave error, and it is the most common mistake of tempo estimators (Gouyon et al., 2004). Quickstep, Tango and VienneseWaltz form tight, separate groups, so the tempo identifies them quite well. The clips with a doubled tempo end up on top of other dances: Waltz on top of Jive (171.8 vs 171.7 BPM), and Rumba on top of Samba and Quickstep (around 200 BPM). This is why the tempo-only model has its lowest F1 on Samba (0.36 for RF, 0.30 for SVM).
+For Jive, VienneseWaltz, Quickstep and most Samba clips the estimate is equal or close to the nominal tempo. For almost all ChaChaCha and Rumba clips, most Tango clips and about half of the Waltz clips, it is twice the nominal tempo. This is called an octave error, and it is the most common mistake of tempo estimators (Gouyon et al., 2004). With the range of 60-280 BPM the estimate picks the double tempo more often than with a lower upper limit, but it does so consistently (section 7.6). Quickstep, VienneseWaltz, ChaChaCha and Tango form tight groups, so the tempo identifies them quite well, although ChaChaCha and Tango are only 3% apart. The clips with a doubled tempo end up on top of other dances: Waltz on top of Jive (168.8 vs 172.1 BPM), and Rumba on top of Samba and Quickstep (around 200 BPM). This is why the tempo-only model has its lowest F1 on Samba (0.46 for RF, 0.38 for SVM).
 
 ### Why even ±2% hurts
 
-The tempo groups are only a few percent apart. VienneseWaltz is 3% above Waltz and Jive, and Quickstep is 2% above Rumba and Samba. A 2% stretch (about 4 BPM at 200 BPM) is enough to move many clips across a decision boundary. At ±2% the tempo-only model loses 18-24 points and the rhythm model 14-16 points. For the same reason a ±2% stretch cannot be used as a "no effect" control, which is why we use the round trip for that.
+The tempo groups are only a few percent apart. VienneseWaltz is 3% above Waltz and Jive, Quickstep is 2% above Rumba and Samba, and Tango is 3% above ChaChaCha. A 2% stretch (about 4 BPM at 200 BPM) is enough to move many clips across a decision boundary. At ±2% the tempo-only model loses 15-28 points and the rhythm model 16-18 points. For the same reason a ±2% stretch cannot be used as a "no effect" control, which is why we use the round trip for that.
 
 ### Where the predictions go
 
 The errors are not random: the predictions move to the dance whose tempo the stretched clip now has. The most common changes for the tempo-only Random Forest (prediction on the original → prediction on the stretched clip) are:
 
-- At +10%: Quickstep (about 204 → 224 BPM) becomes ChaChaCha, whose upper tempo group is around 230 BPM. VienneseWaltz (177 → 195) and Waltz (172 → 189) become Rumba (around 200). ChaChaCha (124 → 136) becomes Tango (128-133).
-- At -10%: Waltz (172 → 155) becomes Samba, which has a group of clips at 140-160 BPM. Tango (128 → 115) becomes ChaChaCha (around 124). Rumba (200 → 180) becomes VienneseWaltz (around 177).
-- The rhythm models move in the same way, and their predictions collect in a few classes. At +10% the rhythm Random Forest predicts Rumba for 286 of the 698 clips, although only 98 of them are Rumba. This is the dark Rumba column in the animation at the top.
+- At +10%: ChaChaCha (about 248 → 273 BPM) becomes Tango (around 256). Rumba (199 → 219) and Quickstep (204 → 224) become ChaChaCha. Waltz (169 → 186), Jive (172 → 189) and VienneseWaltz (178 → 195) become Rumba (around 200).
+- At -10%: Quickstep (204 → 183) becomes Rumba. Tango (256 → 230) becomes ChaChaCha (around 248). VienneseWaltz (178 → 160) and Waltz (169 → 152) become Jive.
+- The rhythm models move in the same way, and their predictions collect in a few classes. At +10% the rhythm Random Forest predicts Rumba for 273 of the 698 clips, although only 98 of them are Rumba. This is the dark Rumba column in the animation at the top.
 
-Because the errors are systematic, the tempo-only model at +10% is worse than random guessing: 9-10% accuracy, compared with 12.5% for guessing among 8 dances.
+Because the errors are systematic, the tempo-only model at +10% falls to 12-15% accuracy, about the level of random guessing among 8 dances (12.5%).
 
 ### Why the rhythm set drops like the tempo-only set
 
-The strongest part of the rhythm set contains the tempo. The cyclic tempogram is not shifted to a reference bin, so its profile tells which tempo class the clip is in, and a 10% stretch moves the profile by about 2 of its 15 bins. Shuffling the cyclic tempogram costs 66-68 points of macro-F1, while the bar ratios and the PLP confidence, which do not contain the tempo directly, cost only 3-5 points each. So the model is mostly reading the tempo class.
+The strongest part of the rhythm set contains the tempo. The cyclic tempogram is not shifted to a reference bin, so its profile tells which tempo class the clip is in, and a 10% stretch moves the profile by about 2 of its 15 bins. Shuffling the cyclic tempogram costs 64-66 points of macro-F1. The two PLP inputs, which do not contain the tempo directly, cost 14-19 points, and the bar ratios 2-3 points. So the model is mostly reading the tempo class.
 
-### Why the round trip hurts the rhythm set a little and the tempo-only set not at all
+### Why the round trip hurts the rhythm set more than the tempo-only set
 
-The phase vocoder smears drum attacks, and the novelty curve is built from those attacks, so the shape of the tempogram changes a bit and the rhythm set loses about 6 points. The position of the main tempo peak does not move (92-93% of the clips keep their tempo within 1%), so the tempo-only model recovers completely (59.2% vs 59.1%).
+The phase vocoder smears drum attacks, and the novelty curve is built from those attacks, so the shape of the tempogram changes and the rhythm set loses about 10-11 points. That is more than in the first run (about 6 points, section 7.6), mostly through the PLP inputs and mostly for Jive and Samba. The position of the main tempo peak hardly moves (89-92% of the clips keep their tempo within 1%), so the tempo-only model loses only 2-4 points.
 
 ### Why the timbral features are stable but weak
 
@@ -335,7 +380,7 @@ The mean and std over frames hardly change when the frames come faster, and the 
 
 ### Random Forest and SVM agree
 
-On the original audio the two classifiers are within 1 point of macro-F1 for every feature set. Under stretching they follow the same curves (table 7.2, at most about 5 points apart at a single stretch), and the drop caused by the tempo differs by at most 3.4 points (table 7.3).
+On the original audio the two classifiers are within about 1 point of macro-F1 for every feature set. Under stretching they follow the same curves for the rhythm and timbral sets (table 7.2, at most about 4 points apart at a single stretch). For the tempo-only set the SVM is more fragile: up to 10 points lower at a single stretch, and its drop caused by the tempo is 8 points larger (table 7.3).
 
 <p align="center"><img src="results/rhythm_random_forest/comparison/model_comparison.png" width="820" alt="Macro-F1 under stretching for Random Forest and SVM-RBF, rhythm set and tempo-only set: the two classifiers follow the same curves"></p>
 
@@ -343,7 +388,7 @@ Random Forest (blue) and SVM-RBF (orange) on stretched audio, for the rhythm set
 
 ### Conclusion
 
-On Ballroom, a model with rhythm features gets about 80% macro-F1, but on average about 31 of those points are lost when only the tempo changes, and the model then predicts the dance that matches the new tempo. Most of its accuracy comes from the tempo, so a high score on this dataset does not show that a model has learned the rhythmic style of the dances.
+On Ballroom, a model with rhythm features gets about 82% macro-F1, but on average about 27-30 of those points are lost when only the tempo changes, and the model then predicts the dance that matches the new tempo. Most of its accuracy comes from the tempo, so a high score on this dataset does not show that a model has learned the rhythmic style of the dances. The [extra experiments](extra_experiments/README.md) show that without the tempo, rhythm features still get 66-72%, and timbre together with tempo-free rhythm features gets 73-76% without losing anything to tempo changes.
 
 ## 9. Comparison with earlier work
 
@@ -351,16 +396,18 @@ Our main findings agree with earlier studies on the same 698 Ballroom clips. The
 
 | Our result | Earlier work | Consistent? |
 |---|---|---|
-| Tempo alone, estimated from the audio: 59-60% | Tempo alone, annotated by hand: 82.3%; tempo alone, estimated by two tempo trackers: 41-53% (Gouyon et al., 2004) | Yes. Ours is between the two; estimated tempi contain octave errors, which Gouyon et al. give as the reason for their drop |
-| Rhythm features: about 80% | Fully automatic rhythm descriptors: 46-80%; up to 90% with the hand-annotated tempo added (Gouyon et al., 2004); 96% with hand-corrected bar positions plus tempo (Dixon et al., 2004) | Yes, within the usual range for fully automatic features |
-| The parts of our rhythm set that do not contain the tempo add only 3-5 points | Tempo-independent rhythm patterns alone: about 50% (Dixon et al., 2004); tempo-independent periodicity peaks alone: 51% (Gouyon et al., 2004) | Yes; without the tempo, rhythm descriptors are much weaker on Ballroom |
+| Tempo alone, estimated from the audio: about 65% | Tempo alone, annotated by hand: 82.3%; tempo alone, estimated by two tempo trackers: 41-53% (Gouyon et al., 2004) | Yes. Ours is between the two; estimated tempi contain octave errors, which Gouyon et al. give as the reason for their drop |
+| Rhythm features: about 82% | Fully automatic rhythm descriptors: 46-80%; up to 90% with the hand-annotated tempo added (Gouyon et al., 2004); 96% with hand-corrected bar positions plus tempo (Dixon et al., 2004) | Yes, within the usual range for fully automatic features |
+| Our rhythm features without the tempo (shifted cyclic tempogram, extra experiments): 66% | Tempo-independent rhythm patterns alone: about 50% (Dixon et al., 2004); tempo-independent periodicity peaks alone: 51% (Gouyon et al., 2004) | Yes; without the tempo, rhythm descriptors are clearly weaker on Ballroom (ours a bit less than the earlier ones) |
 | A ±10% tempo change makes the rhythm and tempo models collapse, and predictions move to the dance with the new tempo (e.g. Quickstep at about 224 BPM becomes ChaChaCha) | For a state-of-the-art Ballroom system, about 80% of the test clips get 3-6 different labels within ±10% stretching, and Jive and Quickstep stretched to 229-232 BPM all become Cha Cha (Sturm, 2016). Standard rhythm features drop to 17-20% when training songs of the same style and similar tempo are removed (Jensen et al., 2009) | Yes, the same tempo shortcut |
 | Tempo-only confusions: Samba, Rumba and Quickstep (all around 200 BPM), Waltz ↔ Jive (around 172 BPM), Tango ↔ ChaChaCha | With the annotated tempo alone, the strongest confusions are Rumba ↔ Samba and Tango ↔ Cha Cha (Gouyon et al., 2004) | Partly. Rumba/Samba and Tango/ChaChaCha are also confused in our data; the extra Waltz ↔ Jive and Quickstep confusions come from octave errors in the estimated tempo |
 | Octave errors in `tau_hat` | Tempo estimators confuse metrical levels: ×2, ×½, ×⅓, ×⅔ (Gouyon et al., 2004; Müller, 2015, ch. 6) | Yes |
-| The round trip costs the rhythm set about 6 points | Phase-vocoder time-stretching smears sharp attacks (Driedger & Müller, 2016), and the rhythm features are built from those attacks | Yes |
+| The round trip costs the rhythm set about 10-11 points | Phase-vocoder time-stretching smears sharp attacks (Driedger & Müller, 2016), and the rhythm features are built from those attacks | Yes |
 | Timbre alone: about 47% | We did not find a directly comparable number for frame-averaged MFCCs on Ballroom. Dixon et al. reach 96% without any spectral features, so on this dataset most of the information is in rhythm and tempo | Plausible |
 
 ## 10. Checks
+
+These checks were done for the first run (section 7.6). The current run uses the same code for the folds, the training and the evaluation; only the rhythm features changed. For those we checked that the notebook code gives the same values as the updated `src/Rythm_extraction.py`, with the upper tempo limit as the only difference.
 
 | Check | What we did | Result |
 |---|---|---|
@@ -388,18 +435,20 @@ Our main findings agree with earlier studies on the same 698 Ballroom clips. The
 | Round trip as the control | Same processing, no net change in tempo, so it isolates the artefacts | ±2% still changes the tempo (and costs the tempo-only model about 20 points) |
 | Stretch only the test audio | Our question is how models trained on normal music behave | Training on stretched audio (augmentation) is a possible fix rather than a test (see future work) |
 | Estimated tempo (`tau_hat`) for the tempo-only baseline | This is what an audio system can actually measure, and it moves with the stretch | The annotated tempo is metadata; it does not change when the audio is stretched, so it cannot test the shortcut |
-| Parabolic refinement of `tau_hat` | The Fourier tempogram has a bin every 6.7 BPM. Without refinement `tau_hat` only took 27 different values and a ±2% stretch (about 2.5 BPM at 120 BPM) often did not change it. With refinement: 675 different values and an error below 0.1% on a click track | A finer tempogram needs a much longer window, which blurs tempo changes within a clip |
-| `plp_peak_ratio` left out | librosa normalises the PLP curve to a maximum of 1, so this ratio is exactly 1 / PLP confidence | Keeping it would count the same information twice |
-| Cyclic tempogram not shifted | Kept as in our original extraction (`src/Rythm_extraction.py`, `cyclic_shift=False`), so we test the rhythm features as we first designed them | A shifted (tempo-invariant) version is the natural next experiment (future work) |
-| 384-frame tempogram window (8.9 s) | Covers several bars even for the slowest dance | Shorter windows give a coarser tempo resolution; longer ones blur local changes |
+| Zero-padded Fourier tempogram and combined `tau_hat` | Without zero padding the Fourier tempogram has a value only every 5-7 BPM, so a ±2% stretch often did not change `tau_hat`. Zero padding gives a value every 0.63 BPM, the product with the autocorrelation tempogram avoids many octave errors, and a parabola through the peak gives sub-bin precision | A finer tempogram without zero padding needs a much longer window, which blurs tempo changes within a clip |
+| Tempo range 60-280 BPM | Covers the tempo of every dance even after a +10% stretch, so the tempo estimate follows the stretch for 89-95% of the clips at every stretch rate (section 7.6). Chosen only from this check, not from classifier results | `src/Rythm_extraction.py` uses 220 BPM; then fast dances stretched by +10% (Quickstep at about 224-232 BPM) go over the limit and the estimate is forced to jump |
+| PLP alignment instead of `plp_peak_ratio` | librosa normalises the PLP curve to a maximum of 1, so the old peak ratio was exactly 1 / PLP confidence. The PLP alignment adds new information: how well the accents line up with the pulse | Keeping the peak ratio would count the same information twice |
+| Cyclic tempogram not shifted | Kept as in our original extraction (`src/Rythm_extraction.py`, `cyclic_shift=False`), so we test the rhythm features as we first designed them | The shifted (tempo-invariant) version is tested in the [extra experiments](extra_experiments/README.md) |
+| 512-frame tempogram window (11.9 s) | Covers several bars even for the slowest dance; the setting of the updated `src/Rythm_extraction.py` | Shorter windows give a coarser tempo resolution; longer ones blur local changes |
 
 </details>
 
 ## 12. Limitations
 
 - Tempo is part of what defines a ballroom dance. Near the edge of a dance's tempo range, a ±10% stretch could make the label itself questionable. The ±2% and ±5% results also drop strongly and are less affected by this.
-- Octave errors. `tau_hat` is often twice the danced tempo (most Rumba and Waltz clips, about half of ChaChaCha), so for those clips the bar ratios are measured at the half-beat level. The tempo-only baseline uses the tempo as estimated, octave errors included.
-- The bar ratios carry only a weak metre signal. On synthetic click tracks they move in the right direction (higher `R_3_4` for a 3/4 pattern, higher `R_4_4` for 4/4), but on the real clips they separate the 3/4 dances from the 4/4 dances only weakly (AUC 0.51 for `R_3_4` alone and 0.63 for `R_3_4 - R_4_4`, where 0.5 is chance). We see two reasons. The autocorrelation gets smaller with the lag because of the analysis window (the window correction in `src/Rythm_extraction.py` is switched off, as in our original extraction), and octave errors move the ratios to the wrong level. This is why they add only 3-5 points.
+- Octave errors. `tau_hat` is often twice the danced tempo (almost all ChaChaCha and Rumba clips, most Tango clips and about half of the Waltz clips), so for those clips the bar ratios are measured at the half-beat level. The tempo-only baseline uses the tempo as estimated, octave errors included.
+- The bar ratios carry only a weak metre signal and add only 2-3 points. In the first run they separated the 3/4 dances from the 4/4 dances only weakly (AUC 0.51 for `R_3_4` alone and 0.63 for `R_3_4 - R_4_4`, where 0.5 is chance), partly because the analysis window makes the autocorrelation smaller at longer lags. The current run corrects for that window, but octave errors still move the ratios to the wrong level, and the log compression in the novelty curve flattens the difference between strong and weak beats.
+- The PLP features are sensitive to the time-stretching process: the round trip costs the rhythm set about 10-11 points, against about 6 points in the first run, which did not have the PLP alignment. Also, librosa's PLP function (version 1.0) normalises only about half of the frames as intended, because of how NumPy compares complex numbers. The PLP values still behave sensibly (steady click tracks give about 0.3, noise about 0.13), but they are not exactly the textbook PLP.
 - Album effects. Duplicates are kept together, but clips from the same album can still end up in both training and test folds. Albums share mastering and instruments, which may help the timbral model.
 - One duplicate pair has two different labels (`Albums-Fire-08` / `-09`), so one of the two clips is always counted as an error.
 - Only five folds. The SD over 5 folds describes the variation but is not a confidence interval, and small differences (for example RF vs SVM, or default vs tuned) are within the noise.
@@ -407,14 +456,15 @@ Our main findings agree with earlier studies on the same 698 Ballroom clips. The
 
 ## 13. Future work
 
-- A shifted (tempo-invariant) cyclic tempogram (`cyclic_shift=True`): does the rhythm model still work when it cannot read the tempo class?
-- Better metre features: window-corrected bar ratios (`autocorr_correction=True`) and a tempo estimate with fewer octave errors.
+- A shifted (tempo-invariant) cyclic tempogram: done in the [extra experiments](extra_experiments/README.md). Without the tempo the rhythm features still get 66%, and timbre with tempo-free rhythm features 73-76%, with no loss from tempo changes.
+- Find out which of the updated rhythm features makes the models sensitive to the stretching process (most likely the PLP alignment).
+- Better metre features: the bar ratios are now window-corrected but still weak; a tempo estimate with fewer octave errors would help them.
 - Tempo augmentation: train on stretched copies and see whether the shortcut disappears and how much accuracy is left.
 - More data, for example the Extended Ballroom dataset, to check whether the same shortcut shows up there.
 
 ## 14. Reproducing the results
 
-Versions we used: Python 3.14.6, numpy 2.5.2, pandas 3.0.5, scikit-learn 1.9.0, librosa 1.0.0, plus scipy, matplotlib, seaborn and joblib. All random seeds are fixed (`RANDOM_SEED = 2026`), so a rerun gives the same folds and the same numbers.
+Versions we used: Python 3.14.6, numpy 2.5.2, pandas 3.0.5, scikit-learn 1.9.0, librosa 1.0.0 for the first run, and Python 3.12.13, numpy 2.5.3, pandas 3.0.6, scikit-learn 1.9.1, librosa 1.0.0 for the current run, plus scipy, matplotlib, seaborn and joblib. All random seeds are fixed (`RANDOM_SEED = 2026`), so a rerun gives the same folds and the same numbers.
 
 ```bash
 pip install numpy pandas scipy scikit-learn librosa matplotlib seaborn joblib jupyter
@@ -423,15 +473,15 @@ pip install numpy pandas scipy scikit-learn librosa matplotlib seaborn joblib ju
 Run the notebooks from the repository folder, since they read and write files next to themselves:
 
 1. Get the Ballroom audio (ISMIR 2004 Ballroom dataset; in the course it was handed out as `data1.tar.gz`) and extract it, for example to `data1/BallroomData/`.
-2. Set `DATASET_DIR` in the configuration cell of each notebook to that `BallroomData` folder. The four experiment notebooks currently point to an absolute path on our machine, and `Timbral_extraction.ipynb` expects `BallroomData/` in the same folder.
+2. Set `DATASET_DIR` in the configuration cell of each notebook to that `BallroomData` folder. The two timbral experiment notebooks currently point to an absolute path on our machine; the rhythm notebooks and `Timbral_extraction.ipynb` expect `BallroomData/` in the same folder.
 3. Run `Timbral_extraction.ipynb` to get `ballroom_timbral_features.csv` (the 30 timbral features of the original clips). The file is already in the repository, so this step can be skipped.
 4. Run `Timbral_Random_Forest.ipynb` and `Timbral_SVM_RBF.ipynb`. The first one creates `folds.csv` and computes the timbral features of all 13 versions (`timbral_conditions.csv`); the second one reuses both.
 5. Run `Rhythm_Random_Forest.ipynb` and `Rhythm_SVM_RBF.ipynb`. The first one computes the rhythm features of all 13 versions (`rhythm_conditions.csv`); the second one reuses it.
 6. The model comparisons read the results of the partner notebook, so after running a pair once, rerun the first notebook of the pair to fill in its comparison sections.
 
-Computing the 13 versions of every clip takes about 14 minutes for the timbral features and 13 minutes for the rhythm features (8 parallel jobs). Everything else takes a few minutes. A full rebuild from the raw audio in an empty folder gives the same `folds.csv`, feature files and results tables (up to float rounding in the last digits of the timbral features).
+Computing the 13 versions of every clip takes about 14 minutes for the timbral features and 14 minutes for the rhythm features (8 parallel jobs). Everything else takes a few minutes. A full rebuild from the raw audio in an empty folder gives the same `folds.csv`, feature files and results tables (up to float rounding in the last digits of the timbral features).
 
-[`src/Rythm_extraction.py`](src/Rythm_extraction.py) contains our original rhythm feature code. Its output, `ballroom_rhythm_features.csv`, is only used as a cross-check in the rhythm notebooks, which use the refined version described in section 4. The animation at the top is made from the saved CSV files in `results/` and does not need the audio.
+[`src/Rythm_extraction.py`](src/Rythm_extraction.py) contains our rhythm feature code. The rhythm notebooks use the same code, with the upper tempo limit at 280 instead of 220 BPM (section 11). `ballroom_rhythm_features.csv` was made by the first version of the script and is only used for a comparison in the rhythm notebooks. The animation at the top was made from the saved CSV files of the first run and does not need the audio.
 
 ## 15. Project layout and tools
 
@@ -445,11 +495,13 @@ music-informatics-project/
 ├── Rhythm_Random_Forest.ipynb        step 3  rhythm + tempo-only experiment, Random Forest (main comparison)
 ├── Rhythm_SVM_RBF.ipynb              step 3  rhythm + tempo-only experiment, SVM-RBF
 ├── ballroom_timbral_features.csv     input   30 timbral features per original clip (read by the timbral notebooks)
-├── ballroom_rhythm_features.csv      input   output of src/Rythm_extraction.py (cross-check in the rhythm notebooks)
+├── ballroom_rhythm_features.csv      input   output of the first version of src/Rythm_extraction.py (comparison only)
 │
+├── extra_experiments/                tempo-free rhythm features and timbre + rhythm (own README)
+├── previous_runs/max_tempo_220/      the second run (tempo range 60-220 BPM), kept for comparison
 ├── src/                              standalone feature extraction scripts
 │   ├── Timbral_extraction.py                 same functions as Timbral_extraction.ipynb, importable
-│   └── Rythm_extraction.py                   original rhythm features (cyclic tempogram, bar ratios, PLP, tau_hat)
+│   └── Rythm_extraction.py                   rhythm features (cyclic tempogram, bar ratios, PLP, tau_hat)
 ├── data/
 │   └── ballroom_timbral_features_scratch.csv  timbral features from the from-scratch numpy version (cross-check)
 ├── results/                          all tables (.csv) and figures (.png), written by the notebooks

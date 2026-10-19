@@ -1,6 +1,6 @@
 fold,inner_best_macro_f1,class_weight,max_features,min_samples_leaf
-1,0.5934487646628798,None,sqrt,8
-2,0.6050316125663562,None,sqrt,2
-3,0.6043797521630995,None,sqrt,4
-4,0.5668870487848006,balanced,sqrt,4
-5,0.6230331220846014,None,sqrt,4
+1,0.6518436365137094,None,sqrt,8
+2,0.6462071324296738,balanced,sqrt,8
+3,0.632811068498512,None,sqrt,8
+4,0.6432771313670099,None,sqrt,2
+5,0.6723215999784026,None,sqrt,8
