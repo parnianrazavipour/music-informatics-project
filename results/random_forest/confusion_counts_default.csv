@@ -1,9 +1,9 @@
 ,ChaChaCha,Jive,Quickstep,Rumba,Samba,Tango,VienneseWaltz,Waltz
-ChaChaCha,63,5,9,8,21,4,0,1
-Jive,22,17,7,4,9,1,0,0
-Quickstep,22,6,25,10,4,10,5,0
-Rumba,8,0,4,59,1,4,2,20
-Samba,34,1,3,8,39,1,0,0
-Tango,5,0,7,3,0,54,5,12
-VienneseWaltz,4,1,2,7,0,14,9,28
-Waltz,0,0,2,9,0,10,10,79
+ChaChaCha,64,4,8,7,23,4,0,1
+Jive,19,16,9,4,12,0,0,0
+Quickstep,18,6,28,12,4,12,2,0
+Rumba,6,0,6,59,1,5,1,20
+Samba,34,1,5,8,38,0,0,0
+Tango,5,0,5,5,0,56,6,9
+VienneseWaltz,4,1,1,7,0,16,6,30
+Waltz,0,0,0,11,0,13,9,77

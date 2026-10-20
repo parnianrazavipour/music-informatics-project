@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 from scipy.signal import get_window
 
 # Features of every clip in all 13 versions, for the extra experiments.
-# timbral_features and the rhythm part of rhythm_features are the same code as in the main notebooks,
+# timbral_features (the from-scratch numpy version) and the rhythm part of rhythm_features are the same code as in the main notebooks,
 # so the reference feature sets give the same numbers. The rhythm settings follow the updated src/Rythm_extraction.py,
 # except the upper tempo limit (280 instead of 220 BPM).
 # New here: the shifted cyclic tempogram and the scale transform.
@@ -71,12 +71,83 @@ def load_audio(path):
 
 
 #--------------------------------------------------------------------------------
-# Timbral features (same as Timbral_extraction.py)
+# Timbral features: the from-scratch (numpy) version of src/Timbral_extraction.py
+
+def count_zero_crossings(samples, N, hop):
+    pos = samples >= 0
+    counts = []
+    for n in range(0, len(samples)-N+1, hop):
+        chunk = pos[n:n+N]
+        counts.append(np.count_nonzero(chunk[1:] != chunk[:-1]))
+    return np.array(counts)
+
+
+def centroid(samples, N, hop, fs):
+    out = []
+    for n in range(0, len(samples)-N+1, hop):
+        mag = abs(np.fft.rfft(samples[n:n+N]))
+        freqs = fs*np.arange(len(mag))/N
+        out.append(np.sum(freqs*mag)/np.sum(mag))
+    return np.array(out)
+
+
+def hz_to_mel(f):
+    # Mel scale of librosa (Slaney): linear below 1 kHz, logarithmic above
+    if f < 1000:
+        return 3*f/200
+    return 15 + 27*np.log(f/1000)/np.log(6.4)
+
+
+def mel_to_hz(m):
+    # m is an array here
+    low = 200*m/3
+    high = 1000*np.exp((m - 15)*np.log(6.4)/27)
+    return np.where(m < 15, low, high)
+
+
+def mel_filterbank(N, fs, n_mels=128):
+    # triangular filters, one row per Mel band
+    freqs = fs*np.arange(N//2 + 1)/N
+    edges = mel_to_hz(np.linspace(0, hz_to_mel(fs/2), n_mels + 2))
+    fb = np.zeros((n_mels, len(freqs)))
+    for m in range(n_mels):
+        left, mid, right = edges[m], edges[m+1], edges[m+2]
+        up = (freqs - left)/(mid - left)
+        down = (right - freqs)/(right - mid)
+        fb[m] = np.maximum(0, np.minimum(up, down))
+        fb[m] = fb[m]*2/(right - left)     # divide by the width
+    return fb
+
+
+def mfcc_from_scratch(samples, N, hop, fs, n_mfcc=13, n_mels=128):
+    w = np.hanning(N)
+    fb = mel_filterbank(N, fs, n_mels)
+
+    # power spectrum and Mel band energies of every frame
+    energies = []
+    for n in range(0, len(samples)-N+1, hop):
+        power = abs(np.fft.rfft(samples[n:n+N]*w))**2
+        energies.append(fb @ power)
+    energies = np.array(energies)
+
+    # dB, and keep only the top 80 dB like librosa does
+    log_e = 10*np.log10(energies + 1e-10)
+    log_e = np.maximum(log_e, log_e.max() - 80)
+
+    # DCT, with the same scaling as librosa
+    i = np.arange(n_mfcc).reshape(-1, 1)
+    m = np.arange(n_mels).reshape(1, -1)
+    dct = np.cos(np.pi*i/n_mels*(m + 0.5))*np.sqrt(2/n_mels)
+    dct[0] = dct[0]/np.sqrt(2)
+
+    return dct @ log_e.T      # shape (n_mfcc, number of frames)
+
 
 def timbral_features(y):
-    mfcc = librosa.feature.mfcc(y=y, sr=SR, n_mfcc=N_MFCC, n_fft=N_FFT, hop_length=HOP, n_mels=N_MELS)
-    zcr = librosa.feature.zero_crossing_rate(y, frame_length=N_FFT, hop_length=HOP)[0]
-    sc = librosa.feature.spectral_centroid(y=y, sr=SR, n_fft=N_FFT, hop_length=HOP)[0]
+    mfcc = mfcc_from_scratch(y, N_FFT, HOP, SR, N_MFCC, N_MELS)
+    zcr = count_zero_crossings(y, N_FFT, HOP)/N_FFT
+    with np.errstate(invalid='ignore'):
+        sc = np.nan_to_num(centroid(y, N_FFT, HOP, SR))   # silent frames give 0/0
     feats = {}
     for i in range(N_MFCC):
         feats[f'mfcc_{i:02d}_mean'] = float(np.mean(mfcc[i]))

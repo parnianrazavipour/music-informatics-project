@@ -4,14 +4,14 @@
 
 **Why we did this.** In the main experiment the rhythm models got about 82% but collapsed when the tempo changed, because our cyclic tempogram still told the model the tempo. So we didn't know yet if rhythm itself can recognise the dances. We also wanted to know if adding timbre makes a model more robust.
 
-**What we changed.** We removed the tempo from the rhythm features in two ways (a shifted cyclic tempogram and a scale transform, explained below), and we trained models on timbre and rhythm together. Data, folds, classifiers, tuning and time-stretching are the same as in the main experiment. The rhythm features use the updated `src/Rythm_extraction.py` with a tempo range of 60–280 BPM (see "Earlier runs" below for why 280).
+**What we changed.** We removed the tempo from the rhythm features in two ways (a shifted cyclic tempogram and a scale transform, explained below), and we trained models on timbre and rhythm together. Data, folds, classifiers, tuning and time-stretching are the same as in the main experiment, and the timbral features are computed with our own NumPy code. The rhythm features use the updated `src/Rythm_extraction.py` with a tempo range of 60–280 BPM (see "Earlier runs" below for why 280).
 
 **How to read the numbers.** All scores are macro-F1 in %: the F1 score of each dance, averaged over the 8 dances, so every dance counts the same (chance is 12.5%). Changes are in percentage points (pp), the plain difference between two percentages: going from 80% to 50% is a drop of 30 pp.
 
 **What we found:**
 
 - **Rhythm without the tempo still gets 66-72% macro-F1 (chance is 12.5%, tempo alone 65%), and the tempo no longer causes any drop (against 27-30 pp for the normal rhythm features).** So the rhythm pattern carries real information, and the tempo is a shortcut on top of it.
-- **Timbre + tempo-free rhythm is the most robust model we have: 73-76% on the original audio, no drop caused by tempo changes, and 66-72% at +10% tempo, against 27-33% for timbre + the normal rhythm features.**
+- **Timbre + tempo-free rhythm is the most robust model we have: 75-78% on the original audio, no drop caused by tempo changes, and 66-70% at +10% tempo, against 26-33% for timbre + the normal rhythm features.**
 - **Adding timbre to the normal rhythm features gives the best score (85%) but does not remove the shortcut.** The model still relies mostly on the tempo and collapses at +10%.
 - The tempo-free features are sensitive to the time-stretching process itself: the shifted tempogram set loses 19-25 pp and the scale transform 29-32 pp even in the round trip, where the tempo is unchanged. So a feature that is tempo-invariant on paper is not automatically robust.
 
@@ -35,21 +35,21 @@ Tuned models, macro-F1 in %, Random Forest / SVM, mean over the 5 test folds. "D
 
 | Feature set | Original audio | At +10% tempo | Drop caused by tempo (pp) |
 |---|---:|---:|---:|
-| Timbral | 46 / 47 | 45 / 47 | none |
+| Timbral | 48 / 49 | 46 / 48 | none |
 | Tempo only | 65 / 65 | 13 / 10 | −29 / −37 |
 | Rhythm (as before) | 82 / 83 | 18 / 15 | −27 / −30 |
 | Rhythm, tempo removed (shifted tempogram) | 66 / 66 | 49 / 50 | none |
 | Scale transform | 69 / 72 | 46 / 47 | none |
 | Rhythm, tempo removed + tempo added back | 81 / 72 | 33 / 55 | −11 / none |
-| Timbral + rhythm | 85 / 85 | 33 / 27 | −26 / −25 |
-| Timbral + rhythm, tempo removed | 73 / 76 | 66 / 72 | none |
-| Timbral + scale transform | 76 / 81 | 60 / 65 | none |
+| Timbral + rhythm | 86 / 85 | 33 / 26 | −26 / −25 |
+| Timbral + rhythm, tempo removed | 75 / 78 | 66 / 70 | none |
+| Timbral + scale transform | 76 / 80 | 60 / 66 | none |
 
 What the numbers mean:
 
 - **The tempo-free models still drop under stretching, but not because of the tempo.** They lose as much or more in the round trip, where the tempo is unchanged, as under stretching. The rhythm features are built from drum attacks, which the stretching smears, and the PLP features of the updated extraction react strongly to that.
 - **The shifted tempogram is worse at ±2% than at ±5%.** One bin covers about 4.7% of tempo. A 5% or 10% stretch moves the profile by almost whole bins, which the rotation removes, but a 2% stretch moves it by half a bin and changes its shape.
-- **The combined model ignores the timbre when it can read the tempo.** Shuffling the cyclic tempogram costs timbre + rhythm 51-60 pp of macro-F1, and shuffling the MFCCs only 6 pp (Random Forest) to 20 pp (SVM). Without the tempo, the MFCCs become about twice as important.
+- **The combined model ignores the timbre when it can read the tempo.** Shuffling the cyclic tempogram costs timbre + rhythm 51-61 pp of macro-F1, and shuffling the MFCCs only 6 pp (Random Forest) to 21 pp (SVM). Without the tempo, the MFCCs become about twice as important.
 - **When the tempo is added back to the tempo-free rhythm features, the Random Forest relies on it again and becomes fragile again.** The SVM uses it much less.
 
 ## A note on the bar ratios
@@ -58,7 +58,7 @@ The first version of the rhythm features said the bar ratios don't depend on the
 
 ## Earlier runs
 
-We ran these experiments three times. Only the rhythm features changed between the runs; folds, classifiers, tuning and stretching stayed the same. The timbral and scale transform results are the same in all three.
+We ran these experiments three times. Between the runs the rhythm features changed; folds, classifiers, tuning and stretching stayed the same. The scale transform results are the same in all three.
 
 | Run | Rhythm features | Where |
 |---|---|---|
@@ -78,8 +78,8 @@ Macro-F1, Random Forest / SVM:
 | … at +10% tempo | 57 / 53 | 44 / 49 | 49 / 50 |
 | … drop caused by tempo (pp) | −9 / −11 | 0 / −4 | none |
 | … drop in the round trip (pp) | −5 / −6 | −19 / −11 | −25 / −19 |
-| Timbral + rhythm, tempo removed, original audio | 72 / 74 | 71 / 75 | 73 / 76 |
-| … at +10% tempo | 69 / 70 | 62 / 65 | 66 / 72 |
+| Timbral + rhythm, tempo removed, original audio | 72 / 74 | 71 / 75 | 75 / 78 |
+| … at +10% tempo | 69 / 70 | 62 / 65 | 66 / 70 |
 
 The updated extraction makes the rhythm features a bit more accurate and removes the remaining tempo effect from the tempo-free sets, but it also makes them more sensitive to the stretching process (larger round-trip drop). The conclusions are the same in all three runs.
 

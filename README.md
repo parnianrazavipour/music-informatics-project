@@ -24,7 +24,7 @@ In this project we classify the 8 dance styles of the Ballroom dataset from audi
 |---|---:|---:|---:|---:|
 | Rhythm features | 81.8% | 23.3% | 17.7% | 70.6% |
 | Tempo only | 64.8% | 22.0% | 12.5% | 61.0% |
-| Timbral features | 47.1% | 46.3% | 45.2% | 43.7% |
+| Timbral features | 48.0% | 46.5% | 45.9% | 44.3% |
 
 Mean over the 5 test folds; chance level is 12.5%. The SVM gives almost the same numbers (section 7). "Round trip" means the audio is stretched and then stretched back, so the tempo is the original one but the audio has gone through the same processing.
 
@@ -36,7 +36,7 @@ The animation at the top (made from the first run, see section 7.6) shows the sa
 
 What the project contains:
 
-- Timbral features (MFCCs, zero-crossing rate, spectral centroid) and rhythm features (cyclic tempogram, autocorrelation bar ratios, PLP confidence and PLP alignment) computed with librosa, plus a global tempo estimate that combines the Fourier and the autocorrelation tempogram.
+- Timbral features (MFCCs, zero-crossing rate, spectral centroid), computed with our own NumPy code, and rhythm features (cyclic tempogram, autocorrelation bar ratios, PLP confidence and PLP alignment) computed with librosa, plus a global tempo estimate that combines the Fourier and the autocorrelation tempogram.
 - Stratified and grouped 5-fold cross-validation with a nested grid search, so that duplicate recordings never end up in both training and test data.
 - 13 versions of every clip: the original, six time-stretches and six round trips.
 - Feature importance, confusion matrices and per-dance results that explain where the drop comes from.
@@ -126,7 +126,7 @@ flowchart TD
 | 1. Load audio | Every `.wav` is read as mono 22,050 Hz audio; the folder name is the label | 22 kHz keeps everything up to 11 kHz, which is enough for these features | `Timbral_extraction.ipynb`; section 3 of the rhythm notebooks | 698 labelled clips |
 | 2. Make folds | The clips are split into 5 folds with the same share of each dance; both copies of a duplicate go into the same fold | Every clip is tested exactly once, and never on a copy of a training recording | `make_folds` (every notebook) | `folds.csv` |
 | 3. Make versions | Every clip is time-stretched by 0.90, 0.95, 0.98, 1.02, 1.05 and 1.10, and stretched back for the round trips | Change only the tempo; the round trip shows the effect of the processing alone | `apply_condition` | 13 versions per clip (9,074 in total) |
-| 4. Extract features | Every version is described by 30 timbral, 20 rhythm and 1 tempo value | Each set contains one kind of information | `timbral_features`, `rhythm_features` | `ballroom_timbral_features.csv`, `timbral_conditions.csv`, `rhythm_conditions.csv` |
+| 4. Extract features | Every version is described by 30 timbral, 20 rhythm and 1 tempo value | Each set contains one kind of information | `timbral_features`, `rhythm_features` | `data/ballroom_timbral_features_scratch.csv`, `timbral_conditions.csv`, `rhythm_conditions.csv` |
 | 5. Train | For each fold, a default model and a tuned model (grid search on 3 inner folds) are trained on the other 4 folds, using the original audio only | The settings are chosen without seeing the test fold | `run_nested_cv` | 5 folds × 2 models, for every feature set and classifier |
 | 6. Test | Each fold's models predict their test fold, in all 13 versions | Same clips and same models; only the audio version changes | `evaluate_conditions` (rhythm), section 16 (timbral) | `held_out_predictions.csv` |
 | 7. Score | Macro-F1, accuracy and flip rate per version, mean ± SD over the 5 folds | Every version is compared with the original audio on the same clips | `classification_scores`, `summarize_folds` | `robustness_summary.csv`, figures |
@@ -161,7 +161,7 @@ The estimated tempo follows the stretch (174.1 × 1.10 ≈ 191.5). When it reach
 | Zero-crossing rate, mean and std | 2 | noisiness, amount of percussion |
 | Spectral centroid, mean and std | 2 | brightness |
 
-We use 22,050 Hz mono audio, frames of 2,048 samples (93 ms), a hop of 512 samples (23 ms) and 128 Mel bands. The mean and std over all frames do not depend on the order of the frames, so these features cannot see the beat. That makes the timbral set a useful negative control: if it changed a lot under time-stretching, the problem would be the processing and not the tempo.
+The timbral features are computed with our own NumPy implementation (the from-scratch version in `Timbral_extraction.ipynb`, checked against librosa). We use 22,050 Hz mono audio, frames of 2,048 samples (93 ms), a hop of 512 samples (23 ms) and 128 Mel bands. The mean and std over all frames do not depend on the order of the frames, so these features cannot see the beat. That makes the timbral set a useful negative control: if it changed a lot under time-stretching, the problem would be the processing and not the tempo.
 
 ### Rhythm set (20 inputs)
 
@@ -217,8 +217,8 @@ All numbers are for the tuned models, averaged over the 5 test folds. All tables
 
 | Feature set | Classifier | Accuracy (%) | Macro-F1 (%) |
 |---|---|---|---|
-| Timbral | Random Forest | 48.71 ± 3.62 | 47.22 ± 3.88 |
-| Timbral | SVM-RBF | 49.57 ± 3.47 | 47.20 ± 3.77 |
+| Timbral | Random Forest | 49.71 ± 4.02 | 48.05 ± 3.94 |
+| Timbral | SVM-RBF | 50.58 ± 3.86 | 48.86 ± 4.49 |
 | Rhythm | Random Forest | 82.24 ± 2.19 | 81.76 ± 2.56 |
 | Rhythm | SVM-RBF | 82.95 ± 2.75 | 82.85 ± 2.86 |
 | Tempo only | Random Forest | 65.90 ± 3.56 | 64.80 ± 3.33 |
@@ -234,20 +234,20 @@ Confusion matrices of the tuned Random Forest on the original audio (left: rhyth
 
 | Tempo change | Timbral RF | Timbral SVM | Rhythm RF | Rhythm SVM | Tempo RF | Tempo SVM |
 |---|---:|---:|---:|---:|---:|---:|
-| -10% | 46.3 | 47.7 | 23.3 | 27.3 | 22.0 | 12.2 |
-| -5% | 46.5 | 47.6 | 46.7 | 47.3 | 33.3 | 29.1 |
-| -2% | 44.7 | 47.1 | 63.4 | 66.5 | 47.8 | 37.5 |
-| 0% (original) | 47.1 | 47.4 | 81.8 | 82.9 | 64.8 | 65.3 |
-| +2% | 44.8 | 47.7 | 66.3 | 67.0 | 49.4 | 45.6 |
-| +5% | 46.5 | 47.5 | 42.4 | 39.0 | 26.3 | 20.4 |
-| +10% | 45.2 | 47.0 | 17.7 | 15.1 | 12.5 | 10.1 |
-| Round trip, mean of 6 | 43.7 | 45.1 | 70.6 | 73.4 | 61.0 | 63.1 |
+| -10% | 46.5 | 47.6 | 23.3 | 27.3 | 22.0 | 12.2 |
+| -5% | 46.5 | 46.3 | 46.7 | 47.3 | 33.3 | 29.1 |
+| -2% | 45.8 | 47.1 | 63.4 | 66.5 | 47.8 | 37.5 |
+| 0% (original) | 48.0 | 48.9 | 81.8 | 82.9 | 64.8 | 65.3 |
+| +2% | 46.4 | 48.1 | 66.3 | 67.0 | 49.4 | 45.6 |
+| +5% | 47.0 | 48.1 | 42.4 | 39.0 | 26.3 | 20.4 |
+| +10% | 45.9 | 48.1 | 17.7 | 15.1 | 12.5 | 10.1 |
+| Round trip, mean of 6 | 44.3 | 45.5 | 70.6 | 73.4 | 61.0 | 63.1 |
 
 <p align="center"><img src="results/rhythm_random_forest/comparison/feature_set_comparison.png" width="900" alt="Macro-F1 of the tuned Random Forest for the three feature sets: left, under time-stretching; right, after the round-trip control"></p>
 
 Macro-F1 of the tuned Random Forest. Left: stretched test audio. Right: round trip (stretched and stretched back). The [SVM version](results/rhythm_svm_rbf/comparison/feature_set_comparison.png) of this figure looks almost the same.
 
-The timbral values at 0% (47.1 and 47.4) are slightly different from table 7.1 (47.22 and 47.20). This is because the stretch experiment recomputes the features from the audio. The recomputed features differ from the training table by at most 0.6% of each feature's spread, which changes 1 of the 698 tuned predictions.
+The timbral values at 0% (48.0 and 48.9) are the same as in table 7.1: the stretch experiment recomputes the features from the audio with exactly the same code as the training table.
 
 ### 7.3 How much of the drop comes from the tempo?
 
@@ -255,8 +255,8 @@ Average change in macro-F1 over the six stretches, compared with the six round t
 
 | Feature set | Classifier | Stretched | Round trip (processing only) | Caused by tempo | Predictions that change under stretching |
 |---|---|---:|---:|---:|---:|
-| Timbral | RF | -1.4 | -3.4 | ≈ 0 | 15% |
-| Timbral | SVM | -0.0 | -2.3 | ≈ 0 | 14% |
+| Timbral | RF | -1.7 | -3.8 | ≈ 0 | 15% |
+| Timbral | SVM | -1.3 | -3.3 | ≈ 0 | 15% |
 | Rhythm | RF | -38.5 | -11.2 | -27.3 | 52% |
 | Rhythm | SVM | -39.1 | -9.5 | -29.6 | 52% |
 | Tempo only | RF | -32.9 | -3.8 | -29.2 | 59% |
@@ -280,21 +280,21 @@ Group permutation importance: we shuffle one feature family across the test clip
 
 | Timbral family | Inputs | Drop, RF (pp) | Drop, SVM (pp) |
 |---|---:|---:|---:|
-| MFCC | 26 | 29.6 | 31.9 |
-| Spectral centroid | 2 | 7.4 | 3.2 |
-| Zero-crossing rate | 2 | 0.5 | 0.4 |
+| MFCC | 26 | 30.5 | 33.2 |
+| Spectral centroid | 2 | 4.7 | 3.6 |
+| Zero-crossing rate | 2 | 1.7 | 2.7 |
 
 The rhythm model depends mostly on the cyclic tempogram, which is the rhythm feature that contains the tempo class (see section 8). The two PLP inputs come second, mostly because of the PLP alignment.
 
 ### 7.5 Sanity checks
 
 - Does the tempo estimate follow the stretch? The median of `tau_hat(stretched) / tau_hat(original)` is equal to the stretch rate (0.90 … 1.10, to two decimals). 89-95% of the clips are within 1% of the expected ratio. Octave jumps, where the estimate switches between a tempo and its double, are 2-7% of the clips depending on the stretch, with the most at +10%. After a round trip, 89-92% of the clips are back within 1% of their original tempo ([figure](results/rhythm_random_forest/comparison/tempo_check.png)).
-- Could the timbral model be recognising albums from their loudness? `mfcc_00` mostly measures loudness, which depends on the mastering. Without it (28 inputs) the tuned macro-F1 is 46.11% (RF) and 48.51% (SVM), compared with 47.22% and 47.20% with it, so the model does not depend on it.
+- Could the timbral model be recognising albums from their loudness? `mfcc_00` mostly measures loudness, which depends on the mastering. Without it (28 inputs) the tuned macro-F1 is 43.75% (RF) and 49.03% (SVM), compared with 48.05% and 48.86% with it, so the SVM does not depend on it and the Random Forest only a little.
 - Does the tuning matter? Not much for the timbral and rhythm sets: the change is within the SD between folds and sometimes negative (rhythm RF: 82.27% default, 81.76% tuned). It matters a lot for the tempo-only SVM (51.70% → 65.35%).
 
 ### 7.6 Earlier runs
 
-We ran the experiment three times. Only the rhythm features changed between the runs; the folds, classifiers, tuning, stretching and timbral features stayed the same.
+We ran the experiment three times. Between the runs the rhythm features changed; the folds, classifiers, tuning and stretching stayed the same.
 
 | Run | Rhythm features | Where |
 |---|---|---|
@@ -376,7 +376,7 @@ The phase vocoder smears drum attacks, and the novelty curve is built from those
 
 ### Why the timbral features are stable but weak
 
-The mean and std over frames hardly change when the frames come faster, and the phase vocoder keeps the spectrum, so the stretched features stay close to the original ones. The small drop comes from the processing (the round trip hurts even more). On its own, timbre only reaches about 47%, because many dances share instruments and production style. The most common confusions are Samba ↔ ChaChaCha (Latin percussion), VienneseWaltz ↔ Waltz / Tango (orchestral ballroom sound) and Rumba → Waltz.
+The mean and std over frames hardly change when the frames come faster, and the phase vocoder keeps the spectrum, so the stretched features stay close to the original ones. The small drop comes from the processing (the round trip hurts even more). On its own, timbre only reaches about 48%, because many dances share instruments and production style. The most common confusions are Samba ↔ ChaChaCha (Latin percussion), VienneseWaltz ↔ Waltz / Tango (orchestral ballroom sound) and Rumba → Waltz.
 
 ### Random Forest and SVM agree
 
@@ -403,7 +403,7 @@ Our main findings agree with earlier studies on the same 698 Ballroom clips. The
 | Tempo-only confusions: Samba, Rumba and Quickstep (all around 200 BPM), Waltz ↔ Jive (around 172 BPM), Tango ↔ ChaChaCha | With the annotated tempo alone, the strongest confusions are Rumba ↔ Samba and Tango ↔ Cha Cha (Gouyon et al., 2004) | Partly. Rumba/Samba and Tango/ChaChaCha are also confused in our data; the extra Waltz ↔ Jive and Quickstep confusions come from octave errors in the estimated tempo |
 | Octave errors in `tau_hat` | Tempo estimators confuse metrical levels: ×2, ×½, ×⅓, ×⅔ (Gouyon et al., 2004; Müller, 2015, ch. 6) | Yes |
 | The round trip costs the rhythm set about 10-11 points | Phase-vocoder time-stretching smears sharp attacks (Driedger & Müller, 2016), and the rhythm features are built from those attacks | Yes |
-| Timbre alone: about 47% | We did not find a directly comparable number for frame-averaged MFCCs on Ballroom. Dixon et al. reach 96% without any spectral features, so on this dataset most of the information is in rhythm and tempo | Plausible |
+| Timbre alone: about 48% | We did not find a directly comparable number for frame-averaged MFCCs on Ballroom. Dixon et al. reach 96% without any spectral features, so on this dataset most of the information is in rhythm and tempo | Plausible |
 
 ## 10. Checks
 
@@ -473,8 +473,8 @@ pip install numpy pandas scipy scikit-learn librosa matplotlib seaborn joblib ju
 Run the notebooks from the repository folder, since they read and write files next to themselves:
 
 1. Get the Ballroom audio (ISMIR 2004 Ballroom dataset; in the course it was handed out as `data1.tar.gz`) and extract it, for example to `data1/BallroomData/`.
-2. Set `DATASET_DIR` in the configuration cell of each notebook to that `BallroomData` folder. The two timbral experiment notebooks currently point to an absolute path on our machine; the rhythm notebooks and `Timbral_extraction.ipynb` expect `BallroomData/` in the same folder.
-3. Run `Timbral_extraction.ipynb` to get `ballroom_timbral_features.csv` (the 30 timbral features of the original clips). The file is already in the repository, so this step can be skipped.
+2. Set `DATASET_DIR` in the configuration cell of each notebook to that `BallroomData` folder. All notebooks expect `BallroomData/` in the same folder.
+3. Run `Timbral_extraction.ipynb` to get `data/ballroom_timbral_features_scratch.csv` (the 30 timbral features of the original clips, computed with our own NumPy code). The file is already in the repository, so this step can be skipped.
 4. Run `Timbral_Random_Forest.ipynb` and `Timbral_SVM_RBF.ipynb`. The first one creates `folds.csv` and computes the timbral features of all 13 versions (`timbral_conditions.csv`); the second one reuses both.
 5. Run `Rhythm_Random_Forest.ipynb` and `Rhythm_SVM_RBF.ipynb`. The first one computes the rhythm features of all 13 versions (`rhythm_conditions.csv`); the second one reuses it.
 6. The model comparisons read the results of the partner notebook, so after running a pair once, rerun the first notebook of the pair to fill in its comparison sections.
@@ -494,7 +494,7 @@ music-informatics-project/
 ├── Timbral_SVM_RBF.ipynb             step 2  timbral experiment, SVM-RBF
 ├── Rhythm_Random_Forest.ipynb        step 3  rhythm + tempo-only experiment, Random Forest (main comparison)
 ├── Rhythm_SVM_RBF.ipynb              step 3  rhythm + tempo-only experiment, SVM-RBF
-├── ballroom_timbral_features.csv     input   30 timbral features per original clip (read by the timbral notebooks)
+├── ballroom_timbral_features.csv     30 timbral features per original clip, computed with librosa (not used by the experiments)
 ├── ballroom_rhythm_features.csv      input   output of the first version of src/Rythm_extraction.py (comparison only)
 │
 ├── extra_experiments/                tempo-free rhythm features and timbre + rhythm (own README)
@@ -503,7 +503,7 @@ music-informatics-project/
 │   ├── Timbral_extraction.py                 same functions as Timbral_extraction.ipynb, importable
 │   └── Rythm_extraction.py                   rhythm features (cyclic tempogram, bar ratios, PLP, tau_hat)
 ├── data/
-│   └── ballroom_timbral_features_scratch.csv  timbral features from the from-scratch numpy version (cross-check)
+│   └── ballroom_timbral_features_scratch.csv  input   30 timbral features per original clip, computed with our own NumPy code (read by the timbral notebooks)
 ├── results/                          all tables (.csv) and figures (.png), written by the notebooks
 │   ├── random_forest/, svm_rbf/                  timbral notebooks (+ time_stretch/)
 │   └── rhythm_random_forest/, rhythm_svm_rbf/    rhythm notebooks: rhythm/, tempo_only/, comparison/

@@ -1,33 +1,33 @@
 feature set,model,family,macro-F1 drop (pp),SD (pp)
-Timbral + rhythm,Random Forest,Cyclic tempogram,60.00249053846651,1.8216900337765636
-Timbral + rhythm,Random Forest,MFCC,6.15498423694087,1.6404418486353354
-Timbral + rhythm,Random Forest,PLP,3.19230229435431,1.6899843202214728
-Timbral + rhythm,Random Forest,Spectral centroid,2.7054099526580786,1.2018243869873368
-Timbral + rhythm,Random Forest,Bar ratios,0.5107592638860576,0.9597606083835725
-Timbral + rhythm,Random Forest,Zero-crossing rate,-0.45558617243063004,0.47051380980425983
-Timbral + rhythm,SVM-RBF,Cyclic tempogram,51.37836894920586,2.106435756663417
-Timbral + rhythm,SVM-RBF,MFCC,20.31212412124548,1.9708408820566619
-Timbral + rhythm,SVM-RBF,PLP,3.5325047896479216,2.3601748643742306
-Timbral + rhythm,SVM-RBF,Bar ratios,1.2346706842981776,1.0518644454653783
-Timbral + rhythm,SVM-RBF,Spectral centroid,0.5676755202813468,1.3898014684328803
-Timbral + rhythm,SVM-RBF,Zero-crossing rate,-0.056778198136435656,1.775267517736801
-"Timbral + rhythm, tempo removed",Random Forest,Shifted cyclic tempogram,30.88955729314613,2.8561520773046944
-"Timbral + rhythm, tempo removed",Random Forest,PLP,17.215044477710496,2.2077303962749184
-"Timbral + rhythm, tempo removed",Random Forest,MFCC,13.468316917268819,3.1817951732905323
-"Timbral + rhythm, tempo removed",Random Forest,Spectral centroid,2.5235272126957975,1.4723035941769747
-"Timbral + rhythm, tempo removed",Random Forest,Bar ratios,0.9697832841690519,0.9738702946189854
-"Timbral + rhythm, tempo removed",Random Forest,Zero-crossing rate,0.101775850750768,0.8946110840674254
-"Timbral + rhythm, tempo removed",SVM-RBF,MFCC,27.456203257546065,4.731222352993834
-"Timbral + rhythm, tempo removed",SVM-RBF,Shifted cyclic tempogram,27.108468743270475,4.461758201316466
-"Timbral + rhythm, tempo removed",SVM-RBF,PLP,13.87948091394331,1.8533038710896053
-"Timbral + rhythm, tempo removed",SVM-RBF,Bar ratios,2.981253462895426,1.4596130561921643
-"Timbral + rhythm, tempo removed",SVM-RBF,Spectral centroid,1.962772055922853,1.6908600817336785
-"Timbral + rhythm, tempo removed",SVM-RBF,Zero-crossing rate,1.0250534508569693,2.2468072917697484
-Timbral + scale transform,Random Forest,Scale transform,49.31070074860891,3.1159672582646514
-Timbral + scale transform,Random Forest,MFCC,13.26984315727536,2.3731073203839355
-Timbral + scale transform,Random Forest,Spectral centroid,3.4096950420986283,1.3359603051238855
-Timbral + scale transform,Random Forest,Zero-crossing rate,0.7001433676620398,0.5049768163471781
-Timbral + scale transform,SVM-RBF,Scale transform,49.76207931487943,3.759235599159277
-Timbral + scale transform,SVM-RBF,MFCC,30.25606031051888,3.356141506531543
-Timbral + scale transform,SVM-RBF,Spectral centroid,2.465276348037797,1.5438749135260692
-Timbral + scale transform,SVM-RBF,Zero-crossing rate,2.2237612240244156,2.331773272645619
+Timbral + rhythm,Random Forest,Cyclic tempogram,60.45622048017114,2.678623861445302
+Timbral + rhythm,Random Forest,MFCC,6.181649353941053,1.0671492043007917
+Timbral + rhythm,Random Forest,PLP,3.870021574247419,1.1420278722808404
+Timbral + rhythm,Random Forest,Spectral centroid,2.413688856841221,1.397533947721164
+Timbral + rhythm,Random Forest,Bar ratios,1.2562933849912783,0.9624525571273133
+Timbral + rhythm,Random Forest,Zero-crossing rate,-0.16656834830763856,1.0343950734775251
+Timbral + rhythm,SVM-RBF,Cyclic tempogram,51.17784811520087,2.2716213017886067
+Timbral + rhythm,SVM-RBF,MFCC,20.465017212816424,2.204828822938908
+Timbral + rhythm,SVM-RBF,PLP,3.6737419265333595,2.540642312302372
+Timbral + rhythm,SVM-RBF,Bar ratios,1.1930824454606863,1.2365530792667647
+Timbral + rhythm,SVM-RBF,Spectral centroid,-0.18095003164180487,1.2490958852426106
+Timbral + rhythm,SVM-RBF,Zero-crossing rate,-0.4014675813277031,1.5900576871607939
+"Timbral + rhythm, tempo removed",Random Forest,Shifted cyclic tempogram,31.308013812868353,2.111562937801883
+"Timbral + rhythm, tempo removed",Random Forest,PLP,16.922492102664588,1.834231507097055
+"Timbral + rhythm, tempo removed",Random Forest,MFCC,13.53896378745395,2.6695814480728637
+"Timbral + rhythm, tempo removed",Random Forest,Spectral centroid,2.688469276069867,1.3898047436237861
+"Timbral + rhythm, tempo removed",Random Forest,Bar ratios,1.4761715477714015,1.7525731265225633
+"Timbral + rhythm, tempo removed",Random Forest,Zero-crossing rate,0.5065434214985954,2.0108340646213607
+"Timbral + rhythm, tempo removed",SVM-RBF,MFCC,29.550337349811677,2.008618740895052
+"Timbral + rhythm, tempo removed",SVM-RBF,Shifted cyclic tempogram,28.465254035323085,4.117608383640339
+"Timbral + rhythm, tempo removed",SVM-RBF,PLP,15.354534150526861,2.0318512751704616
+"Timbral + rhythm, tempo removed",SVM-RBF,Bar ratios,3.680643491336503,1.6077652962331188
+"Timbral + rhythm, tempo removed",SVM-RBF,Spectral centroid,3.1172646054164854,1.22354503366134
+"Timbral + rhythm, tempo removed",SVM-RBF,Zero-crossing rate,1.7805651634004285,1.61343238730831
+Timbral + scale transform,Random Forest,Scale transform,48.08354438342957,2.0906333098596517
+Timbral + scale transform,Random Forest,MFCC,12.636505106262083,2.7894701775889224
+Timbral + scale transform,Random Forest,Spectral centroid,3.4239490644343307,1.84440489511166
+Timbral + scale transform,Random Forest,Zero-crossing rate,0.1803907983562656,1.6171506228702872
+Timbral + scale transform,SVM-RBF,Scale transform,49.28335087332512,3.5568879888536546
+Timbral + scale transform,SVM-RBF,MFCC,29.56113066725827,3.3789994038475526
+Timbral + scale transform,SVM-RBF,Spectral centroid,1.5135816762987822,1.605663541455091
+Timbral + scale transform,SVM-RBF,Zero-crossing rate,1.3105406888697693,2.450436852805946

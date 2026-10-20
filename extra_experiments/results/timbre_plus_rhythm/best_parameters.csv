@@ -1,51 +1,51 @@
 fold,inner_best_macro_f1,class_weight,max_features,min_samples_leaf,model,feature_set,svm__C,svm__class_weight,svm__gamma
-1,0.4632678842290187,balanced,0.5,1.0,Random Forest,Timbral,,,
-2,0.4743175781319022,balanced,sqrt,4.0,Random Forest,Timbral,,,
-3,0.4664689491909996,balanced,1.0,1.0,Random Forest,Timbral,,,
-4,0.49206286056460247,None,sqrt,2.0,Random Forest,Timbral,,,
-5,0.45650247739191024,balanced,sqrt,1.0,Random Forest,Timbral,,,
+1,0.473728773431285,balanced,sqrt,1.0,Random Forest,Timbral,,,
+2,0.48287393340092866,balanced,sqrt,1.0,Random Forest,Timbral,,,
+3,0.47394993212983194,balanced,sqrt,1.0,Random Forest,Timbral,,,
+4,0.4933457363216538,balanced,sqrt,1.0,Random Forest,Timbral,,,
+5,0.4630718076098783,balanced,sqrt,4.0,Random Forest,Timbral,,,
 1,0.7958747561603218,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
 2,0.8040728460086214,None,sqrt,1.0,Random Forest,Rhythm (as before),,,
 3,0.8013402033639353,balanced,0.5,2.0,Random Forest,Rhythm (as before),,,
 4,0.7986420493000704,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
 5,0.7992986070597246,balanced,sqrt,1.0,Random Forest,Rhythm (as before),,,
-1,0.8532988174865829,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
-2,0.8383717817316775,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
-3,0.8393694884499848,None,sqrt,1.0,Random Forest,Timbral + rhythm,,,
-4,0.843745512573455,balanced,sqrt,2.0,Random Forest,Timbral + rhythm,,,
-5,0.8434788733509327,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
-1,0.7431109933856694,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
-2,0.7291032600448503,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
-3,0.7263912879855229,balanced,sqrt,2.0,Random Forest,"Timbral + rhythm, tempo removed",,,
-4,0.7241460077309188,None,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
-5,0.7135480670640355,balanced,sqrt,2.0,Random Forest,"Timbral + rhythm, tempo removed",,,
-1,0.7593689135806523,balanced,sqrt,2.0,Random Forest,Timbral + scale transform,,,
-2,0.7572701497662976,balanced,sqrt,4.0,Random Forest,Timbral + scale transform,,,
-3,0.7481229092544774,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
-4,0.7631915087627,balanced,sqrt,2.0,Random Forest,Timbral + scale transform,,,
-5,0.7236850167345845,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
-1,0.49572813888996475,,,,SVM-RBF,Timbral,1.0,balanced,scale
-2,0.5088055013570466,,,,SVM-RBF,Timbral,1.0,balanced,0.1
-3,0.49080540408978474,,,,SVM-RBF,Timbral,10.0,None,0.01
-4,0.5259231092139179,,,,SVM-RBF,Timbral,10.0,None,0.01
-5,0.48514493604154363,,,,SVM-RBF,Timbral,10.0,balanced,0.001
+1,0.843983633429133,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
+2,0.836301092642918,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
+3,0.8570609853907355,None,sqrt,1.0,Random Forest,Timbral + rhythm,,,
+4,0.8408000804351651,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
+5,0.8364270467388004,balanced,sqrt,1.0,Random Forest,Timbral + rhythm,,,
+1,0.7323440587286251,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
+2,0.7328107205142991,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
+3,0.7346849395390703,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
+4,0.7099584757450664,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
+5,0.7177536657050023,balanced,sqrt,1.0,Random Forest,"Timbral + rhythm, tempo removed",,,
+1,0.758480129505284,balanced,sqrt,2.0,Random Forest,Timbral + scale transform,,,
+2,0.7567472688170206,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
+3,0.749657985850928,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
+4,0.7667467243982896,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
+5,0.7213158632968555,balanced,sqrt,1.0,Random Forest,Timbral + scale transform,,,
+1,0.48726750819521963,,,,SVM-RBF,Timbral,1.0,balanced,scale
+2,0.5036250478519381,,,,SVM-RBF,Timbral,1.0,balanced,scale
+3,0.4903772005366636,,,,SVM-RBF,Timbral,10.0,balanced,0.01
+4,0.5257526421214419,,,,SVM-RBF,Timbral,100.0,None,0.001
+5,0.4879717920085409,,,,SVM-RBF,Timbral,1.0,balanced,0.01
 1,0.8148378999440004,,,,SVM-RBF,Rhythm (as before),10.0,None,0.01
 2,0.8237390775356848,,,,SVM-RBF,Rhythm (as before),10.0,balanced,scale
 3,0.8228505351284136,,,,SVM-RBF,Rhythm (as before),100.0,balanced,0.001
 4,0.8247534464135146,,,,SVM-RBF,Rhythm (as before),10.0,None,0.01
 5,0.8165476919426914,,,,SVM-RBF,Rhythm (as before),10.0,balanced,0.01
-1,0.8506901322918926,,,,SVM-RBF,Timbral + rhythm,10.0,None,0.001
-2,0.8547504226628354,,,,SVM-RBF,Timbral + rhythm,10.0,None,0.001
-3,0.8411479894620326,,,,SVM-RBF,Timbral + rhythm,1.0,balanced,scale
-4,0.8561949310173552,,,,SVM-RBF,Timbral + rhythm,10.0,balanced,0.001
-5,0.8404358889912729,,,,SVM-RBF,Timbral + rhythm,10.0,None,0.001
-1,0.7842125996301204,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
-2,0.7495086335985145,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
-3,0.7781359083088342,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,None,0.001
-4,0.7499110765306946,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.01
-5,0.7524524382718996,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
-1,0.7727812186572004,,,,SVM-RBF,Timbral + scale transform,10.0,None,0.01
-2,0.7717019169505793,,,,SVM-RBF,Timbral + scale transform,10.0,balanced,0.001
-3,0.787019266958512,,,,SVM-RBF,Timbral + scale transform,10.0,balanced,0.01
-4,0.8123956020109309,,,,SVM-RBF,Timbral + scale transform,10.0,balanced,0.001
-5,0.7768798068821532,,,,SVM-RBF,Timbral + scale transform,100.0,None,0.001
+1,0.8527180924674173,,,,SVM-RBF,Timbral + rhythm,10.0,balanced,0.001
+2,0.8568135597054108,,,,SVM-RBF,Timbral + rhythm,10.0,None,0.001
+3,0.8406334965486769,,,,SVM-RBF,Timbral + rhythm,1.0,balanced,scale
+4,0.8596807697973117,,,,SVM-RBF,Timbral + rhythm,10.0,balanced,0.001
+5,0.8438780504409703,,,,SVM-RBF,Timbral + rhythm,10.0,None,0.001
+1,0.7823169046397963,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
+2,0.7478029572943171,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
+3,0.7730127476433117,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.01
+4,0.7467252149056162,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
+5,0.7439115545453179,,,,SVM-RBF,"Timbral + rhythm, tempo removed",10.0,balanced,0.001
+1,0.7726434884462834,,,,SVM-RBF,Timbral + scale transform,10.0,None,0.01
+2,0.7727386764058447,,,,SVM-RBF,Timbral + scale transform,10.0,balanced,0.001
+3,0.7889974509217291,,,,SVM-RBF,Timbral + scale transform,100.0,balanced,0.01
+4,0.8094769627576612,,,,SVM-RBF,Timbral + scale transform,10.0,balanced,0.001
+5,0.7714973416647286,,,,SVM-RBF,Timbral + scale transform,100.0,None,0.001
