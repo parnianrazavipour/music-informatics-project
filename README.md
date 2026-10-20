@@ -515,7 +515,7 @@ The notebooks and the two input CSV files are in the top folder because the note
 
 | Part | Tools |
 |---|---|
-| Audio loading, features, time-stretching | librosa (`onset_strength`, `fourier_tempogram`, `tempogram`, `beat.plp`, `feature.mfcc`, `effects.time_stretch`), numpy, scipy |
+| Audio loading, features, time-stretching | librosa (`onset_strength`, `fourier_tempogram`, `tempogram`, `beat.plp`, `effects.time_stretch`), numpy (timbral features), scipy |
 | Classifiers and evaluation | scikit-learn (`RandomForestClassifier`, `SVC`, `StratifiedGroupKFold`, `GridSearchCV`, `Pipeline`) |
 | Data handling and parallel extraction | pandas, joblib |
 | Figures | matplotlib, seaborn |
