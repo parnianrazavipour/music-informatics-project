@@ -7,16 +7,12 @@ from joblib import Parallel, delayed
 from scipy.interpolate import interp1d
 from scipy.signal import get_window
 
-# Features of every clip in all 13 versions, for the extra experiments.
-# timbral_features (the from-scratch numpy version) and the rhythm part of rhythm_features are the same code as in the main notebooks,
-# so the reference feature sets give the same numbers. The rhythm settings follow the updated src/Rythm_extraction.py,
-# except the upper tempo limit (280 instead of 220 BPM).
-# New here: the shifted cyclic tempogram and the scale transform.
+# features of every clip in all 13 versions
 
-SR, HOP, WIN, N_FFT_TEMPOGRAM = 22050, 512, 512, 4096   # sampling rate, novelty hop (23 ms), tempogram window (11.9 s), zero-padded FFT size
+SR, HOP, WIN, N_FFT_TEMPOGRAM = 22050, 512, 512, 4096
 N_FFT, N_MFCC, N_MELS = 2048, 13, 128
 M, TAU_0, CYCLIC_MIN, CYCLIC_MAX = 15, 60.0, 30.0, 480.0
-TACTUS_MIN, TACTUS_MAX = 60.0, 280.0          # src/Rythm_extraction.py uses 220, see the README
+TACTUS_MIN, TACTUS_MAX = 60.0, 280.0          # Rythm_extraction.py uses 220
 N_SCALE, SCALE_MIN_LAG, SCALE_MAX_LAG, SCALE_POINTS = 20, 0.1, 4.0, 256   # lags in seconds
 
 TIMBRAL_COLUMNS = [f'mfcc_{i:02d}_{statistic}' for i in range(N_MFCC) for statistic in ['mean', 'std']] \
@@ -43,11 +39,11 @@ CONDITION_ORDER = [c['condition'] for c in CONDITIONS]
 
 
 def change_tempo(y, rate):
-    # plays y `rate` times as fast with the same pitch (phase vocoder, as in the main notebooks)
+    # faster or slower, same pitch
     if rate == 1.0:
         return y
     with warnings.catch_warnings():
-        # librosa 1.0 warns that it ignores these two arguments; they are kept to match the main notebooks
+        # harmless librosa 1.0 warning
         warnings.simplefilter('ignore', FutureWarning)
         stretched = librosa.effects.time_stretch(y.astype(np.float64), rate=rate, n_fft=2048, hop_length=512)
     return stretched.astype(np.float32)
@@ -70,9 +66,6 @@ def load_audio(path):
     return y
 
 
-#--------------------------------------------------------------------------------
-# Timbral features: the from-scratch (numpy) version of src/Timbral_extraction.py
-
 def count_zero_crossings(samples, N, hop):
     pos = samples >= 0
     counts = []
@@ -92,21 +85,18 @@ def centroid(samples, N, hop, fs):
 
 
 def hz_to_mel(f):
-    # Mel scale of librosa (Slaney): linear below 1 kHz, logarithmic above
     if f < 1000:
         return 3*f/200
     return 15 + 27*np.log(f/1000)/np.log(6.4)
 
 
 def mel_to_hz(m):
-    # m is an array here
     low = 200*m/3
     high = 1000*np.exp((m - 15)*np.log(6.4)/27)
     return np.where(m < 15, low, high)
 
 
 def mel_filterbank(N, fs, n_mels=128):
-    # triangular filters, one row per Mel band
     freqs = fs*np.arange(N//2 + 1)/N
     edges = mel_to_hz(np.linspace(0, hz_to_mel(fs/2), n_mels + 2))
     fb = np.zeros((n_mels, len(freqs)))
@@ -115,7 +105,7 @@ def mel_filterbank(N, fs, n_mels=128):
         up = (freqs - left)/(mid - left)
         down = (right - freqs)/(right - mid)
         fb[m] = np.maximum(0, np.minimum(up, down))
-        fb[m] = fb[m]*2/(right - left)     # divide by the width
+        fb[m] = fb[m]*2/(right - left)
     return fb
 
 
@@ -123,24 +113,23 @@ def mfcc_from_scratch(samples, N, hop, fs, n_mfcc=13, n_mels=128):
     w = np.hanning(N)
     fb = mel_filterbank(N, fs, n_mels)
 
-    # power spectrum and Mel band energies of every frame
     energies = []
     for n in range(0, len(samples)-N+1, hop):
         power = abs(np.fft.rfft(samples[n:n+N]*w))**2
         energies.append(fb @ power)
     energies = np.array(energies)
 
-    # dB, and keep only the top 80 dB like librosa does
+    # keep the top 80 dB, like librosa
     log_e = 10*np.log10(energies + 1e-10)
     log_e = np.maximum(log_e, log_e.max() - 80)
 
-    # DCT, with the same scaling as librosa
+    # same DCT scaling as librosa
     i = np.arange(n_mfcc).reshape(-1, 1)
     m = np.arange(n_mels).reshape(1, -1)
     dct = np.cos(np.pi*i/n_mels*(m + 0.5))*np.sqrt(2/n_mels)
     dct[0] = dct[0]/np.sqrt(2)
 
-    return dct @ log_e.T      # shape (n_mfcc, number of frames)
+    return dct @ log_e.T
 
 
 def timbral_features(y):
@@ -157,17 +146,13 @@ def timbral_features(y):
     return feats
 
 
-#--------------------------------------------------------------------------------
-# Rhythm features (same as the rhythm notebooks) plus the two tempo-free versions
-
 window = get_window('hann', WIN, fftbins=True)
 WINDOW_CORRECTION = np.correlate(window, window, mode='full')[WIN - 1:]
-WINDOW_CORRECTION = np.maximum(WINDOW_CORRECTION/WINDOW_CORRECTION[0], 0.05)   # autocorrelation of the Hann window
+WINDOW_CORRECTION = np.maximum(WINDOW_CORRECTION/WINDOW_CORRECTION[0], 0.05)
 
 
 def fourier_tempogram(novelty):
-    # Fourier tempogram with a zero-padded FFT: a tempo value every 0.63 BPM instead of every 5 BPM.
-    # n_fft is longer than the novelty curve on purpose (that is the zero padding), so librosa's warning is hidden.
+    # zero padding gives a value every 0.63 BPM
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         tempogram = np.abs(librosa.stft(novelty, n_fft=N_FFT_TEMPOGRAM, hop_length=1, win_length=WIN,
@@ -177,8 +162,6 @@ def fourier_tempogram(novelty):
 
 
 def cyclic_tempogram(fourier_tempogram, tempo_axis):
-    # 30-480 BPM on a log axis with M bins per octave, summed over the octaves (Muller 6.34),
-    # averaged over time and normalised to length 1
     octave_min = int(np.floor(np.log2(CYCLIC_MIN/TAU_0)))
     octave_max = int(np.ceil(np.log2(CYCLIC_MAX/TAU_0)))
     n_octaves = octave_max - octave_min
@@ -192,15 +175,12 @@ def cyclic_tempogram(fourier_tempogram, tempo_axis):
 
 
 def shift_to_strongest_bin(cyclic):
-    # rotate so that the strongest tempo class is always bin 0: the profile keeps its shape
-    # but no longer says which tempo class the clip is in (Rythm_extraction.py with shift=True)
+    # strongest bin first (cyclic_shift=True)
     return np.roll(cyclic, -int(np.argmax(cyclic)))
 
 
 def estimate_tau_hat(fourier_tempogram, fourier_axis, autocorr_tempogram, autocorr_axis):
-    # Combined estimate (Muller p. 330): the Fourier tempogram favours a tempo and its multiples, the
-    # autocorrelation tempogram a tempo and its fractions, so their product keeps the tempo both agree on.
-    # Both are averaged over time and scaled to 0-1 between TACTUS_MIN and TACTUS_MAX.
+    # Fourier x autocorrelation tempogram (Muller p. 330)
     fourier = fourier_tempogram.mean(axis=1)
     autocorr = autocorr_tempogram.mean(axis=1)
     usable = np.isfinite(autocorr_axis) & (autocorr_axis > 0) & np.isfinite(autocorr)
@@ -215,7 +195,6 @@ def estimate_tau_hat(fourier_tempogram, fourier_axis, autocorr_tempogram, autoco
     combined = np.zeros_like(fourier)
     combined[in_range] = f/(f.max() + 1e-8)*a/(a.max() + 1e-8)
 
-    # strongest tempo, refined by a parabola through the peak bin and its two neighbours
     k = np.where(in_range)[0][np.argmax(combined[in_range])]
     left, peak, right = combined[k - 1:k + 2]
     curvature = left - 2*peak + right
@@ -224,8 +203,7 @@ def estimate_tau_hat(fourier_tempogram, fourier_axis, autocorr_tempogram, autoco
 
 
 def bar_ratios(autocorr_tempogram, tempo_axis, tau_hat):
-    # time-averaged autocorrelation, corrected for the Hann window (which damps long lags), at 2, 3 and 4 beats
-    # divided by its value at 1 beat. Each value is the strongest one within ±5% of the target tempo.
+    # corrected for the Hann window, strongest value within 5%
     average = autocorr_tempogram.mean(axis=1)/WINDOW_CORRECTION
     usable = np.isfinite(tempo_axis) & (tempo_axis > 0) & np.isfinite(average)
     order = np.argsort(tempo_axis[usable])
@@ -241,10 +219,7 @@ def bar_ratios(autocorr_tempogram, tempo_axis, tau_hat):
 
 
 def scale_transform(novelty):
-    # Scale transform of the autocorrelation of the novelty curve (Holzapfel & Stylianou, 2011).
-    # Playing the music faster squeezes the autocorrelation along the lag axis. On a log lag axis
-    # that squeeze becomes a shift, and the magnitude of a Fourier transform does not change when
-    # its input is shifted. So these numbers describe the rhythm pattern but not its speed.
+    # scale transform (Holzapfel & Stylianou, 2011)
     x = novelty - novelty.mean()
     n = len(x)
     lags = np.arange(n)
@@ -254,7 +229,7 @@ def scale_transform(novelty):
     frames_per_second = SR/HOP
     log_lags = np.exp(np.linspace(np.log(SCALE_MIN_LAG*frames_per_second),
                                   np.log(SCALE_MAX_LAG*frames_per_second), SCALE_POINTS))
-    warped = np.interp(log_lags, lags, autocorr)*np.sqrt(log_lags)    # sqrt(t) comes from the definition
+    warped = np.interp(log_lags, lags, autocorr)*np.sqrt(log_lags)
     magnitude = np.abs(np.fft.rfft(warped))[:N_SCALE]
     return magnitude/np.linalg.norm(magnitude)
 
@@ -262,7 +237,6 @@ def scale_transform(novelty):
 def rhythm_features(y):
     novelty = librosa.onset.onset_strength(y=y, sr=SR, hop_length=HOP)
     fourier, fourier_axis = fourier_tempogram(novelty)
-    # the autocorrelation tempogram uses the novelty curve with its mean removed (negative values set to 0)
     centred = np.maximum(0.0, novelty - np.mean(novelty))
     autocorr = librosa.feature.tempogram(onset_envelope=centred, sr=SR, hop_length=HOP, win_length=WIN)
     autocorr_axis = librosa.tempo_frequencies(n_bins=autocorr.shape[0], sr=SR, hop_length=HOP)
@@ -274,7 +248,7 @@ def rhythm_features(y):
     feats = dict(zip(CYCLIC_COLUMNS, map(float, cyclic)))
     feats.update(bar_ratios(autocorr, autocorr_axis, tau_hat))
     feats['plp_confidence'] = float(np.mean(pulse))
-    # how well the accents of the novelty curve line up with the pulse (cosine similarity)
+    # cosine similarity between novelty and pulse
     feats['plp_alignment'] = float(np.dot(novelty, pulse)/(np.linalg.norm(novelty)*np.linalg.norm(pulse) + 1e-8))
     feats['tau_hat'] = tau_hat
     feats.update(zip(SHIFTED_COLUMNS, map(float, shift_to_strongest_bin(cyclic))))
@@ -282,11 +256,7 @@ def rhythm_features(y):
     return feats
 
 
-#--------------------------------------------------------------------------------
-# All features of all 13 versions
-
 def condition_rows(path, clip):
-    # the features of one clip in all 13 versions; errors are returned, not hidden
     try:
         y = load_audio(path)
         rows = []
@@ -308,8 +278,6 @@ def is_complete(path, clips):
 
 
 def extract_all_versions(clips, dataset_dir, output_path, n_jobs=8, batch_size=25):
-    # computed 25 clips at a time; progress is saved after every batch, so an interrupted run
-    # continues where it stopped when it is started again
     partial = output_path.with_name(output_path.stem + '_partial.csv')
     done = set(pd.read_csv(partial, usecols=['filename'])['filename']) if partial.is_file() else set()
     todo = clips[~clips['filename'].isin(done)]

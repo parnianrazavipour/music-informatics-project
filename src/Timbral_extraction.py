@@ -3,8 +3,7 @@ import os
 import librosa
 import pandas as pd
 
-# Same functions as in Timbral_extraction.ipynb, so they can be imported from other files.
-# The explanations and the formulas are in the notebook.
+# same functions as in Timbral_extraction.ipynb
 
 
 def load_audio(audio_path, sr=22050, n_fft=2048):
@@ -43,8 +42,7 @@ def summarize(mfcc, zcr, sc):
     return feats
 
 
-#--------------------------------------------------------------------------------
-# Version 1: with librosa (this is the main version)
+# librosa version
 
 def frame_features(y, sr=22050, n_fft=2048, hop_length=512, n_mfcc=13, n_mels=128):
     """
@@ -78,8 +76,7 @@ def extract_timbral_features(audio_path, sr=22050, n_fft=2048, hop_length=512, n
     return timbral_features(y, sr, n_fft, hop_length, n_mfcc, n_mels)
 
 
-#--------------------------------------------------------------------------------
-# Version 2: from scratch (numpy only), kept as a backup
+# from-scratch version
 
 # these two functions are from our lab 1
 
@@ -101,19 +98,16 @@ def centroid(samples, N, hop, fs):
 
 
 def hz_to_mel(f):
-    # Mel scale of librosa (Slaney): linear below 1 kHz, logarithmic above
     if f < 1000:
         return 3*f/200
     return 15 + 27*np.log(f/1000)/np.log(6.4)
 
 def mel_to_hz(m):
-    # m is an array here
     low = 200*m/3
     high = 1000*np.exp((m - 15)*np.log(6.4)/27)
     return np.where(m < 15, low, high)
 
 def mel_filterbank(N, fs, n_mels=128):
-    # triangular filters, one row per Mel band
     freqs = fs*np.arange(N//2 + 1)/N
     edges = mel_to_hz(np.linspace(0, hz_to_mel(fs/2), n_mels + 2))
     fb = np.zeros((n_mels, len(freqs)))
@@ -122,31 +116,30 @@ def mel_filterbank(N, fs, n_mels=128):
         up = (freqs - left)/(mid - left)
         down = (right - freqs)/(right - mid)
         fb[m] = np.maximum(0, np.minimum(up, down))
-        fb[m] = fb[m]*2/(right - left)     # divide by the width
+        fb[m] = fb[m]*2/(right - left)
     return fb
 
 def mfcc_from_scratch(samples, N, hop, fs, n_mfcc=13, n_mels=128):
     w = np.hanning(N)
     fb = mel_filterbank(N, fs, n_mels)
 
-    # power spectrum and Mel band energies of every frame
     energies = []
     for n in range(0, len(samples)-N+1, hop):
         power = abs(np.fft.rfft(samples[n:n+N]*w))**2
         energies.append(fb @ power)
     energies = np.array(energies)
 
-    # dB, and keep only the top 80 dB like librosa does
+    # keep the top 80 dB, like librosa
     log_e = 10*np.log10(energies + 1e-10)
     log_e = np.maximum(log_e, log_e.max() - 80)
 
-    # DCT, with the same scaling as librosa
+    # same DCT scaling as librosa
     i = np.arange(n_mfcc).reshape(-1, 1)
     m = np.arange(n_mels).reshape(1, -1)
     dct = np.cos(np.pi*i/n_mels*(m + 0.5))*np.sqrt(2/n_mels)
     dct[0] = dct[0]/np.sqrt(2)
 
-    return dct @ log_e.T      # shape (n_mfcc, number of frames)
+    return dct @ log_e.T
 
 
 def frame_features_scratch(y, sr=22050, n_fft=2048, hop_length=512, n_mfcc=13, n_mels=128):
@@ -162,9 +155,6 @@ def timbral_features_scratch(y, sr=22050, n_fft=2048, hop_length=512, n_mfcc=13,
     mfcc, zcr, sc = frame_features_scratch(y, sr, n_fft, hop_length, n_mfcc, n_mels)
     return summarize(mfcc, zcr, sc)
 
-
-#--------------------------------------------------------------------------------
-# Whole dataset
 
 def find_tracks(dataset_dir="BallroomData"):
     """
@@ -217,7 +207,7 @@ def extract_dataset(dataset_dir="BallroomData", from_scratch=False, sr=22050):
             continue
 
         row = dict(track)
-        row['duration'] = len(y)/sr     # only for checking the data, not a feature
+        row['duration'] = len(y)/sr     # not a feature
         row.update(feats)
         rows.append(row)
 
@@ -227,7 +217,6 @@ def extract_dataset(dataset_dir="BallroomData", from_scratch=False, sr=22050):
     return pd.DataFrame(rows), failed
 
 
-#--------------------------------------------------------------------------------
 # Usage example:
 if __name__ == "__main__":
     path = "BallroomData/VienneseWaltz/Albums-Ballroom_Classics4-11.wav"
@@ -237,7 +226,6 @@ if __name__ == "__main__":
     for name, value in feats.items():
         print(f"  {name:<24} {value:10.3f}")
 
-    # on a time-stretched clip (same settings, so the two can be compared)
     y = load_audio(path)
     y_fast = librosa.effects.time_stretch(y, rate=1.1)
     feats_fast = timbral_features(y_fast)

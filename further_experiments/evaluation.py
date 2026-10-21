@@ -13,9 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-# Folds, models, nested cross-validation and the time-stretch evaluation.
-# This is the code of the main notebooks, with the model passed in as an argument,
-# so one notebook can run several feature sets with both classifiers.
+# folds, models, nested cross-validation and the time-stretch evaluation
 
 RANDOM_SEED = 2026
 OUTER_FOLDS = 5
@@ -23,7 +21,6 @@ INNER_FOLDS = 3
 VARIANTS = ['Default', 'Tuned']
 METRICS = ['accuracy', 'balanced_accuracy', 'macro_precision', 'macro_recall', 'macro_f1', 'weighted_f1']
 
-# every feature set keeps the same colour in all figures of the extra experiments
 SET_COLORS = {
     'Timbral': '#2a78d6',
     'Rhythm (as before)': '#eb6834',
@@ -36,7 +33,7 @@ SET_COLORS = {
     'Timbral + scale transform': '#4a3aa7',
 }
 
-KNOWN_REPLICAS = [   # 13 known pairs of repeated recordings; Fire-08 / Fire-09 is the same audio with two labels
+KNOWN_REPLICAS = [   # known duplicate pairs (Fire-08 and Fire-09 have different labels)
     ('Albums-AnaBelen_Veneo-11.wav', 'Albums-Chrisanne2-12.wav'),
     ('Albums-Fire-08.wav', 'Albums-Fire-09.wav'),
     ('Albums-Latin_Jam2-05.wav', 'Albums-Latin_Jam2-13.wav'),
@@ -53,9 +50,6 @@ KNOWN_REPLICAS = [   # 13 known pairs of repeated recordings; Fire-08 / Fire-09 
 ]
 
 
-#--------------------------------------------------------------------------------
-# Clips and folds (same as the main notebooks)
-
 def find_clips(dataset_dir):
     rows = []
     for folder, _, files in os.walk(dataset_dir):
@@ -69,8 +63,8 @@ def find_clips(dataset_dir):
 
 def make_folds(clips):
     folds = clips[['filename', 'label']].sort_values('filename').reset_index(drop=True)
-    group_of = {name: name.removesuffix('.wav') for name in folds['filename']}   # every clip its own group...
-    for first, second in KNOWN_REPLICAS:                                          # ...except the known pairs
+    group_of = {name: name.removesuffix('.wav') for name in folds['filename']}
+    for first, second in KNOWN_REPLICAS:
         if first in group_of and second in group_of:
             group_of[second] = group_of[first]
     folds['group_id'] = folds['filename'].map(group_of)
@@ -80,9 +74,6 @@ def make_folds(clips):
         folds.loc[test_rows, 'fold'] = fold
     return folds
 
-
-#--------------------------------------------------------------------------------
-# The two classifiers, with the same grids as the rhythm notebooks
 
 MODELS = {
     'Random Forest': {
@@ -99,9 +90,6 @@ MODELS = {
     },
 }
 
-
-#--------------------------------------------------------------------------------
-# Scores
 
 def classification_scores(y_true, y_pred, class_labels):
     def average(metric, how):
@@ -122,9 +110,6 @@ def summarize_folds(fold_metrics, metrics=METRICS, by=('variant',)):
     return summary.reset_index()
 
 
-#--------------------------------------------------------------------------------
-# Nested cross-validation on the original audio
-
 @dataclass
 class CVResults:
     feature_columns: list
@@ -135,7 +120,6 @@ class CVResults:
 
 
 def run_nested_cv(data, feature_columns, model_name, n_jobs=8, verbose=True):
-    # for every outer fold: a default model and a grid-searched (tuned) model, both trained on the other 4 folds
     estimator, grid = MODELS[model_name]['estimator'], MODELS[model_name]['grid']
     class_labels = np.sort(data['label'].unique())
     fold_rows, parameter_rows, models = [], [], {}
@@ -169,11 +153,7 @@ def run_nested_cv(data, feature_columns, model_name, n_jobs=8, verbose=True):
     return CVResults(feature_columns, pd.DataFrame(fold_rows), predictions, pd.DataFrame(parameter_rows), models)
 
 
-#--------------------------------------------------------------------------------
-# The same fold models on the changed audio
-
 def evaluate_conditions(result, data, versions, conditions):
-    # only .predict() is called; every version keeps its label and its test fold
     class_labels = np.sort(data['label'].unique())
     by_condition = {name: rows.set_index('filename') for name, rows in versions.groupby('condition')}
     columns = result.feature_columns
@@ -198,7 +178,6 @@ def evaluate_conditions(result, data, versions, conditions):
 
 
 def tempo_effect_row(condition_metrics):
-    # one line per model and feature set: how much of the drop comes from the tempo (tuned models)
     tuned = summarize_folds(condition_metrics[condition_metrics['variant'] == 'Tuned'],
                             ['macro_f1', 'flip_rate', 'macro_f1_change_pp'], by=('condition', 'kind'))
     tuned = tuned.set_index('condition')
@@ -213,11 +192,7 @@ def tempo_effect_row(condition_metrics):
             'flip rate, stretch (%)': 100*tuned.loc[tuned['kind'] == 'stretch', 'flip_rate_mean'].mean()}
 
 
-#--------------------------------------------------------------------------------
-# Which feature families does a tuned model use?
-
 def group_importance(result, data, groups, repeats=5):
-    # shuffle all columns of one family together across the test clips and measure the macro-F1 drop
     rows = []
     for fold, fold_models in result.models.items():
         test = data['fold'] == fold
@@ -235,11 +210,7 @@ def group_importance(result, data, groups, repeats=5):
     return per_fold.groupby('feature_family').agg(['mean', 'std']).sort_values('mean', ascending=False)
 
 
-#--------------------------------------------------------------------------------
-# Plot
-
 def plot_robustness(condition_metrics, set_colors, model_name, axes):
-    # tuned models: macro-F1 against the stretch (left) and the round trip (right)
     for axis, kind, title in zip(axes, ['stretch', 'roundtrip'], ['stretched (tempo changed)', 'round trip (tempo restored)']):
         for set_name, color in set_colors.items():
             metrics = condition_metrics[set_name]
