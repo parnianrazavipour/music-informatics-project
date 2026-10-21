@@ -46,36 +46,17 @@ The classes are imbalanced, so we use macro-F1 as the main metric. It gives ever
 ## 3. Pipeline
 
 ```mermaid
-flowchart TD
-    subgraph S1["1. Data"]
-        A["698 Ballroom clips<br/>8 dances, about 30 s each"]
-    end
-    subgraph S2["2. Folds"]
-        B["5 test folds, stratified by dance,<br/>duplicate recordings kept together"]
-    end
-    subgraph S3["3. Audio versions"]
-        V["13 versions of every clip:<br/>original + 6 stretches + 6 round trips"]
-    end
-    subgraph S4["4. Features (one row per clip and version)"]
-        C1["Timbral<br/>30 numbers"]
-        C2["Rhythm<br/>20 numbers"]
-        C3["Tempo only<br/>1 number"]
-        C5["Rhythm, tempo removed<br/>shifted tempogram or scale transform: 20 numbers<br/>+ tempo: 21 numbers"]
-        C4["Timbral + rhythm<br/>normal, tempo removed or scale transform<br/>50 numbers"]
-    end
-    subgraph S5["5. Training, original audio only"]
-        D["for each fold: train on the other 4 folds<br/>default model + nested grid search<br/>Random Forest and SVM-RBF"]
-    end
-    subgraph S6["6. Testing"]
-        E["each fold's models predict their unseen<br/>test fold, in all 13 versions"]
-    end
-    subgraph S7["7. Analysis"]
-        F["macro-F1 and accuracy per version<br/>stretch minus round trip = effect of tempo<br/>flip rate, confusion matrices, feature importance"]
-    end
-    A --> B --> V --> C1 & C2 & C3 & C5 & C4 --> D --> E --> F
+flowchart LR
+    A[698 clips] --> B[5 folds] --> C[13 audio versions] --> D[features] --> E[train on original audio] --> F[test on all versions]
 ```
 
-The timbral notebooks run this for the timbral features (the features of the original clips come from `Timbral_extraction.ipynb`), the rhythm notebooks for the rhythm and tempo-only features, and the two notebooks in `further_experiments/` for the tempo-free and combined sets. All of them use the same folds and the same 13 versions.
+1. The clips are split into 5 folds, stratified by dance, with duplicate recordings kept in the same fold.
+2. Every clip gets 13 versions: the original, 6 stretches and 6 round trips.
+3. Every version is described by each feature set (section 4).
+4. For each fold, a Random Forest and an SVM are trained and tuned on the other 4 folds, using only the original audio.
+5. The models predict their test fold in all 13 versions, and we compare the scores with the original audio.
+
+The timbral notebooks run this for the timbral features (the features of the original clips come from `Timbral_extraction.ipynb`), the rhythm notebooks for the rhythm and tempo-only features, and the two notebooks in `further_experiments/` for the tempo-free and combined sets.
 
 ### Example: one Waltz clip
 
