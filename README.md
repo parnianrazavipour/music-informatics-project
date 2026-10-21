@@ -58,9 +58,10 @@ flowchart TD
     end
     subgraph S4["4. Features (one row per clip and version)"]
         C1["Timbral<br/>30 numbers"]
-        C2["Rhythm, with and without the tempo<br/>20 numbers"]
+        C2["Rhythm<br/>20 numbers"]
         C3["Tempo only<br/>1 number"]
-        C4["Timbral + rhythm<br/>50 numbers"]
+        C5["Rhythm, tempo removed<br/>shifted tempogram or scale transform: 20 numbers<br/>+ tempo: 21 numbers"]
+        C4["Timbral + rhythm<br/>normal, tempo removed or scale transform<br/>50 numbers"]
     end
     subgraph S5["5. Training, original audio only"]
         D["for each fold: train on the other 4 folds<br/>default model + nested grid search<br/>Random Forest and SVM-RBF"]
@@ -71,7 +72,7 @@ flowchart TD
     subgraph S7["7. Analysis"]
         F["macro-F1 and accuracy per version<br/>stretch minus round trip = effect of tempo<br/>flip rate, confusion matrices, feature importance"]
     end
-    A --> B --> V --> C1 & C2 & C3 & C4 --> D --> E --> F
+    A --> B --> V --> C1 & C2 & C3 & C5 & C4 --> D --> E --> F
 ```
 
 The timbral notebooks run this for the timbral features (the features of the original clips come from `Timbral_extraction.ipynb`), the rhythm notebooks for the rhythm and tempo-only features, and the two notebooks in `further_experiments/` for the tempo-free and combined sets. All of them use the same folds and the same 13 versions.
