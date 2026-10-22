@@ -19,7 +19,7 @@ Mean over the 5 test folds; chance level is 12.5%. The SVM gives almost the same
 
 - The rhythm features reach about 82% on the original audio but only about 18% when the music is played 10% faster. The round trip costs about 11 points, so most of the drop comes from the tempo change itself.
 - The timbral features hardly change under stretching, but on their own they only reach about 48%.
-- With the tempo removed, the rhythm features still reach 66-72%, and together with timbre 75-78%, and they lose nothing to the tempo change.
+- With the tempo removed, the rhythm features still reach about 66%, and together with timbre 75-78%, and they lose nothing to the tempo change.
 
 So on Ballroom, most of what the rhythm models get right comes from the tempo. The rhythm pattern does carry information about the dance, but when the tempo is available the models rely on it.
 
@@ -111,13 +111,12 @@ All rhythm features come from the novelty curve (spectral flux), which has a pea
 | Feature set | Inputs | What it is |
 |---|---:|---|
 | Rhythm, tempo removed | 20 | the rhythm set with a shifted cyclic tempogram: the profile is rotated so that its strongest bin is always the first one, so it keeps its shape but no longer says which tempo class the clip is in (`cyclic_shift=True` in `src/Rythm_extraction.py`) |
-| Scale transform | 20 | the scale transform (Holzapfel & Stylianou, 2011) of the autocorrelation of the novelty curve. When the music is played faster, the autocorrelation is squeezed but keeps its shape; on a log lag axis the squeeze becomes a shift, and the magnitude of a Fourier transform ignores shifts |
 | Rhythm, tempo removed + tempo | 21 | the tempo-free rhythm set plus `tau_hat` |
-| Timbral + one of the rhythm sets | 50 | timbre together with the rhythm set, the tempo-free rhythm set or the scale transform |
+| Timbral + one of the rhythm sets | 50 | timbre together with the rhythm set or the tempo-free rhythm set |
 
-<p align="center"><img src="further_experiments/results/rhythm_without_tempo/similarity_to_original.png" width="700" alt="Median cosine similarity between the original and the stretched version of the cyclic tempogram, the shifted cyclic tempogram and the scale transform, for every stretch"></p>
+<p align="center"><img src="further_experiments/results/rhythm_without_tempo/similarity_to_original.png" width="700" alt="Median cosine similarity between the original and the stretched version of the cyclic tempogram and the shifted cyclic tempogram, for every stretch"></p>
 
-Median cosine similarity between each representation of the original clip and of its stretched version (1 = unchanged). The cyclic tempogram moves with the tempo (0.82-0.83 at ±10%), while the two tempo-free representations stay at 0.98 or higher.
+Median cosine similarity between each representation of the original clip and of its stretched version (1 = unchanged). The cyclic tempogram moves with the tempo (0.82-0.83 at ±10%), while the shifted tempogram stays at 0.98 or higher.
 
 ## 5. Classifiers and evaluation
 
@@ -247,13 +246,12 @@ Macro-F1 in %, Random Forest / SVM.
 | Tempo only | 65 / 65 | 12 / 10 | -3.8 / -2.2 | -29.2 / -37.3 |
 | Rhythm | 82 / 83 | 18 / 15 | -11.2 / -9.5 | -27.3 / -29.6 |
 | Rhythm, tempo removed (shifted tempogram) | 66 / 66 | 49 / 50 | -24.8 / -19.4 | none (+3.6 / +2.5) |
-| Scale transform | 69 / 72 | 46 / 47 | -31.6 / -29.2 | none (+9.5 / +9.0) |
 | Rhythm, tempo removed + tempo | 81 / 72 | 33 / 55 | -17.4 / -17.1 | -11.2 / none |
 
 <p align="center"><img src="further_experiments/results/rhythm_without_tempo/robustness_curves.png" width="900" alt="Macro-F1 of the tempo-free rhythm sets under time-stretching and in the round trip, for both classifiers"></p>
 
-- The rhythm pattern alone recognises the dances well above chance: 66% with the shifted tempogram and 69-72% with the scale transform, about as good as the tempo alone.
-- Without the tempo, there is no drop caused by the tempo. The tempo-free sets still lose under stretching, but as much or more in the round trip, so they are sensitive to the processing itself. A feature that is tempo-invariant on paper is not automatically robust in practice.
+- The rhythm pattern alone recognises the dances well above chance (66% with the shifted tempogram), about as good as the tempo alone.
+- Without the tempo, there is no drop caused by the tempo. The tempo-free set still loses under stretching, but as much or more in the round trip, so it is sensitive to the processing itself.
 - The shifted tempogram is worse at ±2% than at ±5%: a 2% stretch moves the profile by half a bin and changes its shape, while 5% and 10% move it by almost whole bins.
 - When the tempo is added back, the Random Forest relies on it again (shuffling `tau_hat` costs 46 points) and becomes fragile again. The SVM uses it much less (14 points).
 
@@ -265,11 +263,10 @@ Macro-F1 in %, Random Forest / SVM.
 | Rhythm | 82 / 83 | 18 / 15 | -11.2 / -9.5 | -27.3 / -29.6 |
 | Timbral + rhythm | 86 / 85 | 33 / 26 | -3.0 / -1.3 | -25.9 / -24.9 |
 | Timbral + rhythm, tempo removed | 75 / 78 | 66 / 70 | -13.3 / -11.8 | none (+2.5 / +2.3) |
-| Timbral + scale transform | 76 / 80 | 60 / 66 | -28.0 / -20.4 | none (+13.8 / +8.7) |
 
 <p align="center"><img src="further_experiments/results/timbre_plus_rhythm/robustness_curves.png" width="900" alt="Macro-F1 of the combined feature sets under time-stretching and in the round trip, for both classifiers"></p>
 
-<p align="center"><img src="further_experiments/results/timbre_plus_rhythm/feature_family_importance.png" width="900" alt="Macro-F1 drop when one family of inputs is shuffled, for the three combined feature sets and both classifiers"></p>
+<p align="center"><img src="further_experiments/results/timbre_plus_rhythm/feature_family_importance.png" width="900" alt="Macro-F1 drop when one family of inputs is shuffled, for the combined feature sets and both classifiers"></p>
 
 Macro-F1 drop when one family of inputs is shuffled (Random Forest in blue, SVM in orange).
 
@@ -346,7 +343,6 @@ music-informatics-project/
 - S. Dixon, F. Gouyon, G. Widmer. *Towards characterisation of music via rhythmic patterns.* ISMIR, 2004. (nominal dance tempi)
 - B. L. Sturm. *A simple method to determine if a music information retrieval system is a "horse".* IEEE Transactions on Multimedia, 2014.
 - M. Müller. *Fundamentals of Music Processing.* Springer, 2015, chapter 6.
-- A. Holzapfel, Y. Stylianou. *Scale transform in rhythmic similarity of music.* IEEE TASLP, 2011.
 - BallroomAnnotations (CPJKU), https://github.com/CPJKU/BallroomAnnotations (list of duplicate recordings).
 
 ## 12. Terms
@@ -357,5 +353,4 @@ music-informatics-project/
 | Caused by tempo | The change under stretching minus the change in the round trip |
 | pp | Percentage points: going from 80% to 50% is a drop of 30 pp |
 | Shifted cyclic tempogram | A cyclic tempogram rotated so that its strongest bin is always the first one, so it no longer shows the tempo class |
-| Scale transform | A transform whose magnitude does not change when a signal is stretched in time |
 | Flip rate | Share of clips whose prediction changes between the original and the stretched audio |

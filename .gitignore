@@ -13,3 +13,9 @@ __pycache__/
 
 # features of all 13 versions, made by the notebooks in further_experiments/
 further_experiments/all_versions_features*.csv
+
+# report (kept local, written on Overleaf)
+DT2470/
+
+# features of all 13 versions, made by the timbral notebooks
+timbral_conditions.csv

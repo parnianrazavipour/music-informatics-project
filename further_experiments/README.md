@@ -1,6 +1,6 @@
 # Rhythm without the tempo, and timbre + rhythm
 
-The notebooks in this folder test two more groups of feature sets: rhythm features with the tempo removed (a shifted cyclic tempogram and a scale transform), and the timbral features together with the rhythm features. They use the same data, folds, classifiers, tuning and time-stretching as the notebooks in the main folder.
+The notebooks in this folder test two more groups of feature sets: rhythm features with the tempo removed (a shifted cyclic tempogram), and the timbral features together with the rhythm features. They use the same data, folds, classifiers, tuning and time-stretching as the notebooks in the main folder.
 
 The method and the results are described in the [main README](../README.md): the feature sets in section 4, the results in sections 7.6 and 7.7.
 
